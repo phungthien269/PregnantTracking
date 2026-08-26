@@ -46,10 +46,8 @@ const BOYTE_TT52 = {
   org: 'Bộ Y tế VN — Thông tư 52/2025/TT-BYT',
   url: 'https://thuvienphapluat.vn/van-ban/The-thao-Y-te/Thong-tu-52-2025-TT-BYT-pham-vi-phai-su-dung-vac-xin-sinh-pham-y-te-bat-buoc-687438.aspx',
 }
-const BOYTE_TT52_PDF = {
-  org: 'Bộ Y tế VN — Thông tư 52/2025/TT-BYT (toàn văn)',
-  url: 'https://static3.luatvietnam.vn/uploaded/vietlawfile/2026/1/s_52_2025_tt_byt_010126114520.pdf',
-}
+// Toàn văn PDF Thông tư 52/2025/TT-BYT:
+// https://static3.luatvietnam.vn/uploaded/vietlawfile/2026/1/s_52_2025_tt_byt_010126114520.pdf
 const TYT_MEDINET = {
   org: 'Trạm Y tế — TCMR (medinet.gov.vn)',
   url: 'https://tytphuong7q11.medinet.gov.vn/cham-soc-ba-me-tre-em/lich-tiem-chung-cho-tre-theo-chuong-trinh-tiem-chung-mo-rong-c7443-242400.aspx',

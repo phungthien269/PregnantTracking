@@ -36,7 +36,6 @@ import {
 } from '../auth/core'
 import {
   FAMILY_ID,
-  MOM_ID,
   DAD_ID,
   pregnancies,
   fetuses,

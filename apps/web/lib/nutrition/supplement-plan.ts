@@ -63,11 +63,8 @@ const VN_RDA_2016: Citation = {
   url: 'https://file.hstatic.net/200000713511/file/nhu-cau-dinh-duong-khuyen-nghi-cho-nguoi-viet-nam-bo-y-te-2016_1351b03467f74a40a14580ae822b6e1c.pdf',
 }
 
-const VN_QD_776: Citation = {
-  org: 'Bộ Y tế',
-  title: 'Quyết định 776/QĐ-BYT — Hướng dẫn quốc gia dinh dưỡng cho phụ nữ có thai',
-  url: 'https://thuvienphapluat.vn/van-ban/The-thao-Y-te/Quyet-dinh-776-QD-BYT-2017-Tai-lieu-huong-dan-quoc-gia-ve-dinh-duong-cho-Phu-nu-co-thai-465012.aspx',
-}
+// Tham chiếu thêm: Quyết định 776/QĐ-BYT — Hướng dẫn quốc gia dinh dưỡng cho
+// phụ nữ có thai: https://thuvienphapluat.vn/van-ban/The-thao-Y-te/Quyet-dinh-776-QD-BYT-2017-Tai-lieu-huong-dan-quoc-gia-ve-dinh-duong-cho-Phu-nu-co-thai-465012.aspx
 
 const VN_IRON_FOLIC: Citation = {
   org: 'Trạm Y tế — Bộ Y tế',

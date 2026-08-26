@@ -18,7 +18,6 @@ export interface ChunkInput {
   text: string
 }
 
-const TARGET_CHUNK = 800
 const MAX_CHUNK = 1400
 
 /** Từ hay mở đầu câu thường (tránh nhầm câu bị ngắt dòng thành heading). */
