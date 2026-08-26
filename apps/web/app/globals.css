@@ -1,0 +1,41 @@
+@import 'tailwindcss';
+@import '@mevabe/ui/tokens.css';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme inline {
+  --color-bg: var(--mv-bg);
+  --color-surface: var(--mv-surface);
+  --color-surface-muted: var(--mv-surface-muted);
+  --color-fg: var(--mv-text);
+  --color-muted: var(--mv-text-muted);
+  --color-border: var(--mv-border);
+  --color-primary: var(--mv-primary);
+  --color-primary-strong: var(--mv-primary-strong);
+  --color-primary-soft: var(--mv-primary-soft);
+  --color-accent: var(--mv-accent);
+  --color-accent-soft: var(--mv-accent-soft);
+  --color-danger: var(--mv-danger);
+  --color-warning: var(--mv-warning);
+  --color-success: var(--mv-success);
+  --font-sans: var(--mv-font-sans);
+  --radius-sm: var(--mv-radius-sm);
+  --radius-md: var(--mv-radius-md);
+  --radius-lg: var(--mv-radius-lg);
+  --shadow-card: var(--mv-shadow-card);
+  --shadow-pop: var(--mv-shadow-pop);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply bg-bg font-sans text-fg antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Tiêu điểm bàn phím rõ ràng (WCAG) */
+:focus-visible {
+  @apply outline-2 outline-offset-2 outline-primary;
+}

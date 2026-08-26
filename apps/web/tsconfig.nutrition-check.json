@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "incremental": false,
+    "composite": false,
+    "tsBuildInfoFile": null
+  },
+  "include": ["lib/nutrition/foods-data.ts", "lib/nutrition/meals-data.ts", "lib/nutrition/foods-meals.check.ts"],
+  "exclude": ["node_modules"]
+}

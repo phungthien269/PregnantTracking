@@ -1,0 +1,58 @@
+# Mẹ & Bé — iOS project (XcodeGen)
+# Cách dùng:
+#   brew install xcodegen
+#   cd code/apps/ios && xcodegen generate
+#   open MeVaBe.xcodeproj   # đổi Bundle ID + team trong Signing & Capabilities
+# Không dựng được project ở đây (máy chỉ có Command Line Tools) — README có đủ.
+name: MeVaBe
+options:
+  bundleIdPrefix: vn.mevabe
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.7"
+    IPHONEOS_DEPLOYMENT_TARGET: "16.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: 1
+    CODE_SIGN_STYLE: Automatic
+    ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+    ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+targets:
+  MeVaBe:
+    type: application
+    platform: iOS
+    sources:
+      - path: MeVaBe
+    entitlements:
+      path: MeVaBe/MeVaBe.entitlements
+      properties:
+        com.apple.developer.healthkit: true
+        com.apple.developer.healthkit.access:
+          - heart-rate
+        aps-environment: development
+    info:
+      path: MeVaBe/Info.plist
+      properties:
+        CFBundleDisplayName: "Mẹ & Bé"
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        NSHealthShareUsageDescription: "Mẹ & Bé đọc dữ liệu cân nặng, huyết áp, vận động, giấc ngủ và nhịp tim để theo dõi thai kỳ và sức khỏe của mẹ."
+        NSHealthUpdateUsageDescription: "Mẹ & Bé ghi dữ liệu cân nặng, huyết áp, vận động và giấc ngủ bạn nhập để đồng bộ với hồ sơ thai kỳ."
+        NSFaceIDUsageDescription: "Mẹ & Bé dùng Face ID / Touch ID để mở khóa ứng dụng, bảo vệ dữ liệu riêng tư của gia đình."
+        ITSAppUsesNonExemptEncryption: false
+        UIBackgroundModes:
+          - remote-notification
+        # Cấu hình môi trường (đổi trong Xcode: target → Info nếu cần)
+        MV_API_BASE_URL: "http://localhost:3000"
+        MV_SUPABASE_URL: ""
+        MV_SUPABASE_ANON_KEY: ""
+  MeVaBeTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: MeVaBeTests
+    dependencies:
+      - target: MeVaBe

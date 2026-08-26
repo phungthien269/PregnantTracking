@@ -1,0 +1,19 @@
+{
+  "name": "mevabe",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Mẹ & Bé — đồng hành thai kỳ, dinh dưỡng và chăm bé cho gia đình Việt",
+  "scripts": {
+    "dev": "turbo run dev --filter web",
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "lint": "turbo run lint"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.0"
+  },
+  "packageManager": "pnpm@11.17.0",
+  "engines": {
+    "node": ">=24"
+  }
+}

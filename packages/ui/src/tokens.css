@@ -1,0 +1,132 @@
+/* ===========================================================================
+   Mẹ & Bé — Design tokens
+   Ấm áp – dịu hiện đại. WCAG AA. Dark mode + accent tùy chỉnh qua
+   data-accent trên <html>. Primary thay đổi theo accent; accent là màu phụ.
+   =========================================================================== */
+
+:root {
+  color-scheme: light;
+  --mv-font-sans: ui-sans-serif, system-ui, -apple-system, 'Be Vietnam Pro', 'Segoe UI', Roboto, sans-serif;
+
+  /* Surface */
+  --mv-bg: #faf7f4;
+  --mv-surface: #ffffff;
+  --mv-surface-muted: #f3eeea;
+  --mv-text: #3d2f2a;
+  --mv-text-muted: #74615a;
+  --mv-border: #e7dcd5;
+
+  /* Accent mặc định: rose ấm
+     Giá trị light đã đậm hơn để đạt WCAG AA:
+     text ≥ 4.5:1, chữ trắng trên primary ≥ 4.5:1. */
+  --mv-primary: #af614e;
+  --mv-primary-strong: #a15140;
+  --mv-primary-soft: #f6e4df;
+  --mv-accent: #7ba47f;
+  --mv-accent-soft: #e3efe4;
+
+  --mv-danger: #a93226;
+  --mv-warning: #805d1c;
+  --mv-success: #3e6f4e;
+
+  --mv-radius-sm: 8px;
+  --mv-radius-md: 12px;
+  --mv-radius-lg: 18px;
+  --mv-radius-full: 999px;
+
+  --mv-shadow-card: 0 1px 2px rgba(90, 60, 50, 0.06), 0 4px 16px rgba(90, 60, 50, 0.08);
+  --mv-shadow-pop: 0 8px 30px rgba(90, 60, 50, 0.16);
+}
+
+.dark {
+  color-scheme: dark;
+  --mv-bg: #1f1a17;
+  --mv-surface: #2a2320;
+  --mv-surface-muted: #332b27;
+  --mv-text: #f2e8e2;
+  --mv-text-muted: #b6a49b;
+  --mv-border: #40352f;
+  --mv-primary: #d98b74;
+  --mv-primary-strong: #e6a08c;
+  --mv-primary-soft: #4a342c;
+  --mv-accent: #8fb893;
+  --mv-accent-soft: #2f4032;
+  --mv-danger: #e68578;
+  --mv-warning: #d9a84f;
+  --mv-success: #7cb88d;
+  --mv-shadow-card: 0 1px 2px rgba(0, 0, 0, 0.2), 0 4px 16px rgba(0, 0, 0, 0.25);
+  --mv-shadow-pop: 0 8px 30px rgba(0, 0, 0, 0.4);
+}
+
+/* ---- Custom accent ---- */
+[data-accent='green'] {
+  --mv-primary: #5c7f5e;
+  --mv-primary-strong: #4e7150;
+  --mv-primary-soft: #e0ece1;
+  --mv-accent: #c98f6b;
+  --mv-accent-soft: #f3e4d8;
+}
+[data-accent='green'].dark {
+  --mv-primary: #8fb893;
+  --mv-primary-strong: #a2c6a6;
+  --mv-primary-soft: #2f4032;
+  --mv-accent: #d9a486;
+  --mv-accent-soft: #4a3830;
+}
+
+[data-accent='blue'] {
+  --mv-primary: #557a9d;
+  --mv-primary-strong: #486c8e;
+  --mv-primary-soft: #e1ebf4;
+  --mv-accent: #c98f6b;
+  --mv-accent-soft: #f3e4d8;
+}
+[data-accent='blue'].dark {
+  --mv-primary: #7fa6cc;
+  --mv-primary-strong: #93b8da;
+  --mv-primary-soft: #2a3a4c;
+  --mv-accent: #d9a486;
+  --mv-accent-soft: #4a3830;
+}
+
+[data-accent='purple'] {
+  --mv-primary: #856ba8;
+  --mv-primary-strong: #775d99;
+  --mv-primary-soft: #ede7f6;
+  --mv-accent: #7ba47f;
+  --mv-accent-soft: #e3efe4;
+}
+[data-accent='purple'].dark {
+  --mv-primary: #a68fc9;
+  --mv-primary-strong: #b5a2d3;
+  --mv-primary-soft: #382f47;
+  --mv-accent: #8fb893;
+  --mv-accent-soft: #2f4032;
+}
+
+[data-accent='amber'] {
+  --mv-primary: #967032;
+  --mv-primary-strong: #866529;
+  --mv-primary-soft: #f5ead5;
+  --mv-accent: #7ba47f;
+  --mv-accent-soft: #e3efe4;
+}
+[data-accent='amber'].dark {
+  --mv-primary: #d0a75c;
+  --mv-primary-strong: #dcb572;
+  --mv-primary-soft: #463c26;
+  --mv-accent: #8fb893;
+  --mv-accent-soft: #2f4032;
+}
+
+/* Giảm chuyển động theo WCAG */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

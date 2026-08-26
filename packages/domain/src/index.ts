@@ -1,0 +1,13 @@
+// Mẹ & Bé domain — re-export tất cả module.
+export * from './core'
+export * from './family'
+export * from './pregnancy'
+export * from './pregnancy/rules'
+export * from './nutrition'
+export * from './nutrition/food-safety'
+export * from './postpartum'
+export * from './postpartum/growth'
+export * from './coordination'
+export * from './coordination/recurrence'
+export * from './content'
+export * from './ai'
