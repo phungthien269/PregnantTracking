@@ -31,8 +31,8 @@ values
   ('10000000-0000-0000-0000-000000000003', 'Bố', null, null, '1991-08-30', now(), now());
 
 -- ---- families + family_members + privacy_settings ----
-insert into public.families (id, name, created_at, updated_at)
-values ('10000000-0000-0000-0000-000000000001', 'Gia đình Việt', now(), now());
+insert into public.families (id, name, code, created_at, updated_at)
+values ('10000000-0000-0000-0000-000000000001', 'Gia đình Việt', 'MEVABE', now(), now());
 
 insert into public.family_members (id, family_id, user_id, role, invited_at, joined_at, created_at, updated_at)
 values

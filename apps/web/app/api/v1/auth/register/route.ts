@@ -1,6 +1,6 @@
 import { registerSchema } from '@/lib/auth/core'
 import { apiOk, apiError } from '@/lib/api-utils'
-import { bridgeSupabaseRegister } from '@/lib/auth/supabase-bridge'
+import { bridgeSupabaseRegister, bridgeSupabaseFamilyBootstrap } from '@/lib/auth/supabase-bridge'
 import {
   ensureAuthSeed,
   dbUserByEmail,
@@ -76,7 +76,17 @@ export async function POST(req: Request): Promise<Response> {
     },
     201,
   )
-  // Cầu Supabase: tạo user auth + cấp JWT cho tầng dữ liệu Supabase khi cấu hình.
-  await bridgeSupabaseRegister(res, email, password, name ?? email)
+  // Cầu Supabase: tạo user auth + cấp JWT + bootstrap hồ sơ/gia đình (RLS ready).
+  const supabaseUserId = await bridgeSupabaseRegister(res, email, password, name ?? email)
+  const fam = dbFamilyById(familyId)
+  await bridgeSupabaseFamilyBootstrap({
+    authUserId: supabaseUserId,
+    email,
+    familyId,
+    familyCode: fam?.code ?? null,
+    familyName: fam?.name ?? `Gia đình của ${name ?? email}`,
+    role,
+    fullName: name ?? email,
+  })
   return res
 }

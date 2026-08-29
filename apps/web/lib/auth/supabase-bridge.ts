@@ -50,32 +50,81 @@ export async function bridgeSupabaseLogin(res: NextResponse, email: string, pass
   }
 }
 
-/** Sau register app: tạo user auth Supabase (confirm sẵn) rồi cấp JWT. */
+/** Sau register app: tạo user auth Supabase (confirm sẵn) rồi cấp JWT. Trả id auth Supabase (hoặc null). */
 export async function bridgeSupabaseRegister(
   res: NextResponse,
   email: string,
   password: string,
   name: string,
-): Promise<void> {
+): Promise<string | null> {
   const u = url()
   const k = anonKey()
   const sk = serviceKey()
   if (!u || !k || !sk) {
     await bridgeSupabaseLogin(res, email, password)
-    return
+    return null
   }
+  let supabaseUserId: string | null = null
   try {
     const admin = createClient(u, sk, { auth: { persistSession: false, autoRefreshToken: false } })
-    const { error } = await admin.auth.admin.createUser({
+    const { data, error } = await admin.auth.admin.createUser({
       email,
       password,
       email_confirm: true,
       user_metadata: { full_name: name },
     })
-    // EMAIL đã tồn tại trên Supabase (re-register local) → cứ thử đăng nhập bên dưới.
     if (error && !`${error.message}`.toLowerCase().includes('already')) throw error
+    supabaseUserId = data?.user?.id ?? null
   } catch {
     // Bỏ qua — signInWithPassword bên dưới tự quyết định có cookie hay không.
   }
   await bridgeSupabaseLogin(res, email, password)
+  return supabaseUserId
+}
+
+/**
+ * Bootstrap dữ liệu gia đình trên Supabase cho user ĐĂNG KÝ MỚI (service-role,
+ * server-only — RLS chặn user tự ghi do chưa thuộc gia đình nào: bootstrap ngược).
+ * Mirror gia đình local sang Supabase (CÙNG id) để family_id thống nhất 2 tầng.
+ */
+export async function bridgeSupabaseFamilyBootstrap(input: {
+  authUserId: string | null
+  email: string
+  familyId: string
+  familyCode: string | null
+  familyName: string
+  role: 'owner' | 'member'
+  fullName: string
+}): Promise<void> {
+  const u = url()
+  const sk = serviceKey()
+  if (!u || !sk || !input.authUserId) return
+  try {
+    const admin = createClient(u, sk, { auth: { persistSession: false, autoRefreshToken: false } })
+    const now = new Date().toISOString()
+    // profiles — id khớp user auth (RLS policies dùng auth.uid()); full_name NOT NULL.
+    await admin.from('profiles').upsert(
+      { id: input.authUserId, full_name: input.fullName || 'Thành viên', created_at: now, updated_at: now },
+      { onConflict: 'id' },
+    )
+    // Mirror gia đình local sang Supabase (CÙNG id + code) — owner tạo mới, member
+    // tham gia gia đình có sẵn: cùng id nên invite code khớp cả 2 tầng.
+    await admin.from('families').upsert(
+      { id: input.familyId, name: input.familyName, code: input.familyCode, created_at: now, updated_at: now },
+      { onConflict: 'id' },
+    )
+    await admin.from('family_members').upsert(
+      {
+        family_id: input.familyId,
+        user_id: input.authUserId,
+        role: input.role,
+        joined_at: now,
+        created_at: now,
+        updated_at: now,
+      },
+      { onConflict: 'family_id,user_id' },
+    )
+  } catch {
+    // Nuốt êm — dữ liệu local luôn là nguồn thật cho phiên hiện tại.
+  }
 }
