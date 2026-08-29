@@ -30,6 +30,36 @@ html {
   scroll-behavior: smooth;
 }
 
+/* R5 — hiệu ứng vào trang (template.tsx): chỉ transform/opacity → 60fps. */
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.page-enter {
+  animation: page-enter 180ms ease-out;
+}
+
+/* Tôn trọng "giảm chuyển động" của hệ điều hành (WCAG) — tắt mọi animation
+   trang trí (vào trang, skeleton pulse); giữ nội dung hiển thị đầy đủ. */
+@media (prefers-reduced-motion: reduce) {
+  .page-enter {
+    animation: none;
+  }
+  .animate-pulse {
+    animation: none;
+  }
+  html {
+    scroll-behavior: auto;
+  }
+}
+
 body {
   @apply bg-bg font-sans text-fg antialiased;
   text-rendering: optimizeLegibility;

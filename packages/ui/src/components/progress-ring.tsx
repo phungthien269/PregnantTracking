@@ -31,7 +31,7 @@ export function ProgressRing({
           strokeLinecap="round"
           strokeDasharray={c}
           strokeDashoffset={offset}
-          className="stroke-primary"
+          className="stroke-primary transition-[stroke-dashoffset] duration-500 ease-out"
         />
       </svg>
       <div className="absolute inset-0 flex items-center justify-center text-sm font-semibold text-fg">

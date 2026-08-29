@@ -30,7 +30,7 @@ export function buttonClasses(
   className?: string,
 ): string {
   return cx(
-    'inline-flex items-center justify-center rounded-md font-medium transition-colors',
+    'inline-flex items-center justify-center rounded-md font-medium transition duration-150 active:scale-[0.98]',
     'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
     'disabled:pointer-events-none disabled:opacity-50',
     VARIANTS[variant],
