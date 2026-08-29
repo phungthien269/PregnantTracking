@@ -2,11 +2,13 @@
  * Chiến lược:
  *  - Trang chính (navigation): network-first, fallback cache (offline shell).
  *  - Static assets (_next/static, font, icon): cache-first.
- *  - API GET: network-first, fallback cache — chỉ cache GET, không cache response lỗi.
+ *  - API GET: stale-while-revalidate — cache trả NGAY (tốc độ cảm nhận trên 3G/4G),
+ *    mạng làm mới ngầm; chưa có cache → network-first; offline → trả JSON lỗi.
+ *    Chỉ cache GET, không cache response lỗi.
  *  - POST/PUT/PATCH/DELETE: không cache (để trình duyệt fetch bình thường).
  * Bump VERSION khi deploy đổi tài sản tĩnh để phá cache cũ.
  */
-const VERSION = 'v2'
+const VERSION = 'v3'
 const SHELL_CACHE = `mevabe-shell-${VERSION}`
 const STATIC_CACHE = `mevabe-static-${VERSION}`
 const API_CACHE = `mevabe-api-${VERSION}`
@@ -135,6 +137,32 @@ async function networkFirst(request, cacheName, options = {}) {
   }
 }
 
+/* Stale-while-revalidate: cache trả NGAY, mạng làm mới ngầm (nhanh hơn network-first
+ * trên mạng chậm; dữ liệu tự cập nhật sau khi fetch ngầm xong). */
+async function staleWhileRevalidate(request, cacheName, event, options = {}) {
+  const cache = await caches.open(cacheName)
+  const cached = await caches.match(request)
+  const refresh = fetch(request)
+    .then((response) => {
+      if (response && response.ok) cache.put(request, response.clone())
+      return response
+    })
+    .catch(() => null)
+  if (cached) {
+    // Giữ SW sống đến khi fetch ngầm xong (không bị cắt giữa chừng).
+    if (event && event.waitUntil) event.waitUntil(refresh)
+    return cached
+  }
+  try {
+    return await refresh
+  } catch {
+    return new Response(options.body || null, {
+      status: options.status || 503,
+      headers: options.headers || { 'Content-Type': 'application/json; charset=utf-8' },
+    })
+  }
+}
+
 self.addEventListener('fetch', (event) => {
   const request = event.request
   // Chỉ xử lý GET; POST/PUT/PATCH/DELETE để trình duyệt fetch bình thường.
@@ -143,10 +171,10 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url)
   if (url.origin !== self.location.origin) return // bỏ qua nguồn khác (Google Fonts, ảnh ngoài)
 
-  // API GET (có tham số query/path): network-first, fallback cache — trả JSON lỗi khi offline.
+  // API GET: stale-while-revalidate — cache trả ngay + làm mới ngầm; offline trả JSON lỗi.
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(
-      networkFirst(request, API_CACHE, {
+      staleWhileRevalidate(request, API_CACHE, event, {
         body: OFFLINE_API,
         status: 503,
         headers: { 'Content-Type': 'application/json; charset=utf-8' },

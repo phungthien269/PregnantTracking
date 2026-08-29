@@ -7,7 +7,9 @@ import { SessionProvider } from '@/lib/auth/session-context'
 
 const beVietnamPro = Be_Vietnam_Pro({
   subsets: ['latin', 'vietnamese'],
-  weight: ['400', '500', '600', '700'],
+  // 3 weights (400/500/600) — bỏ 700 (chỉ 1 chỗ dùng, đổi thành semibold) giảm
+  // ~1 file font tải lúc đầu (plan hiệu năng A3).
+  weight: ['400', '500', '600'],
   variable: '--mv-font-sans',
   display: 'swap',
 })

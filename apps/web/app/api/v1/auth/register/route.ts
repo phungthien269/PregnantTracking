@@ -1,5 +1,6 @@
 import { registerSchema } from '@/lib/auth/core'
 import { apiOk, apiError } from '@/lib/api-utils'
+import { bridgeSupabaseRegister } from '@/lib/auth/supabase-bridge'
 import {
   ensureAuthSeed,
   dbUserByEmail,
@@ -62,7 +63,7 @@ export async function POST(req: Request): Promise<Response> {
   const user = await dbCreateUser(email, password, name ?? null, familyId)
   dbCreateMember(familyId, user.id, role)
   const session = dbCreateSession(user.id)
-  return apiOk(
+  const res = apiOk(
     {
       session: {
         token: session.token,
@@ -75,4 +76,7 @@ export async function POST(req: Request): Promise<Response> {
     },
     201,
   )
+  // Cầu Supabase: tạo user auth + cấp JWT cho tầng dữ liệu Supabase khi cấu hình.
+  await bridgeSupabaseRegister(res, email, password, name ?? email)
+  return res
 }

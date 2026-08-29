@@ -474,7 +474,19 @@ export interface VisitDocumentInput {
 // DataApi interface
 // ===========================================================================
 
+export interface HomeBundle {
+  pregnancy: D.Pregnancy | null
+  dashboard: DashboardSummary
+  mealsToday: D.MealEntry[]
+  water: WaterCaffeine
+  fetuses: D.Fetus[]
+  birthRecord: D.BirthRecord | null
+}
+
 export interface DataApi {
+  /** A2 (perf, đã duyệt): gói dữ liệu trang chủ — 1 lượt gọi thay 5. Optional:
+   *  local implement trực tiếp; tầng chưa có sẽ fallback Promise.all ở page. */
+  getHomeBundle?(): Promise<HomeBundle>
   // ---- Thai kỳ & sức khỏe ----
   getPregnancy(): Promise<D.Pregnancy | null>
   getFetuses(): Promise<D.Fetus[]>

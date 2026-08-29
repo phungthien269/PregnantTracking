@@ -21,12 +21,10 @@ create extension if not exists pgcrypto;
 
 set session_replication_role = 'replica';
 
--- ---- auth.users + profiles ----
-insert into auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
-values
-  ('00000000-0000-0000-0000-000000000000', '10000000-0000-0000-0000-000000000002', 'authenticated', 'authenticated', 'me@demo.vi', crypt('demo123456', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"full_name":"Mẹ"}', now(), now()),
-  ('00000000-0000-0000-0000-000000000000', '10000000-0000-0000-0000-000000000003', 'authenticated', 'authenticated', 'bo@demo.vi', crypt('demo123456', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"full_name":"Bố"}', now(), now());
-
+-- ---- profiles ----
+-- auth.users KHÔNG seed trực tiếp (INSERT thủ công làm GoTrue lỗi đọc schema —
+-- xác minh 2026-08-29). User demo tạo qua Admin API (scripts/supabase-provision.sh)
+-- rồi ánh xạ id user mới vào các bảng public bằng đoạn remap ở cuối script.
 insert into public.profiles (id, full_name, avatar_url, phone, birth_date, created_at, updated_at)
 values
   ('10000000-0000-0000-0000-000000000002', 'Mẹ', null, null, '1995-04-12', now(), now()),
@@ -84,7 +82,7 @@ values
 insert into public.fetal_movement_logs (family_id, pregnancy_id, felt_at, feeling, duration_min, note, created_at, updated_at)
 values
   ('10000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001', '2026-07-29T21:30:00+07:00', 'normal', null, 'Bé đạp nhẹ nhàng', now(), now()),
-  ('10000000-0000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001', '2026-07-30T22:15:00+07:00', 'normal', null, null, now(), now()),
+  ('10000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001', '2026-07-30T22:15:00+07:00', 'normal', null, null, now(), now()),
   ('10000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001', '2026-08-01T08:10:00+07:00', 'normal', null, 'Sau bữa sáng bé cử động đều', now(), now()),
   ('10000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001', '2026-08-02T21:40:00+07:00', 'normal', null, null, now(), now()),
   ('10000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001', '2026-08-03T07:25:00+07:00', 'normal', null, 'Buổi sáng đạp nhẹ vài cái', now(), now());
@@ -150,7 +148,7 @@ insert into public.diaper_logs (family_id, child_id, changed_at, type, note, cre
 values
   ('10000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000002', '2026-08-03T07:00:00+07:00', 'pee', null, now(), now()),
   ('10000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000002', '2026-08-03T09:30:00+07:00', 'mixed', null, now(), now()),
-  ('10000000-0000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000002', '2026-08-03T12:00:00+07:00', 'pee', null, now(), now()),
+  ('10000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000002', '2026-08-03T12:00:00+07:00', 'pee', null, now(), now()),
   ('10000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000002', '2026-08-03T15:00:00+07:00', 'poo', 'Sau bữa cháo trưa', now(), now()),
   ('10000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000002', '2026-08-03T18:00:00+07:00', 'pee', null, now(), now());
 
@@ -212,7 +210,7 @@ values
 insert into public.tasks (family_id, title, description, status, due_date, assignee_id, completed_at, reminder_id, created_at, updated_at)
 values
   ('10000000-0000-0000-0000-000000000001', 'Đặt lịch siêu âm hình thái tuần 20', null, 'todo', '2026-08-10', '10000000-0000-0000-0000-000000000002', null, null, now(), now()),
-  ('10000000-0000-0000-0000-0000-000000000001', 'Mua canxi và sắt dự trữ', 'Mua thêm 1 hộp sắt, 1 hộp canxi.', 'in_progress', '2026-08-07', '10000000-0000-0000-0000-000000000003', null, null, now(), now()),
+  ('10000000-0000-0000-0000-000000000001', 'Mua canxi và sắt dự trữ', 'Mua thêm 1 hộp sắt, 1 hộp canxi.', 'in_progress', '2026-08-07', '10000000-0000-0000-0000-000000000003', null, null, now(), now()),
   ('10000000-0000-0000-0000-000000000001', 'Tập yoga bầu buổi tối', null, 'done', '2026-08-03', '10000000-0000-0000-0000-000000000002', '2026-08-03T19:00:00+07:00', null, now(), now()),
   ('10000000-0000-0000-0000-000000000001', 'Đặt lịch tiêm phòng uốn ván mũi 1', null, 'todo', '2026-09-28', '10000000-0000-0000-0000-000000000003', null, null, now(), now()),
   ('10000000-0000-0000-0000-000000000001', 'Sắp xếp phòng và mua đồ sơ sinh', null, 'in_progress', '2026-08-15', '10000000-0000-0000-0000-000000000003', null, null, now(), now()),

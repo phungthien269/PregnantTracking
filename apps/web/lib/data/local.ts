@@ -138,6 +138,19 @@ function waterToday(): number {
 
 const localImpl = {
   // ---- Thai kỳ & sức khỏe ----
+  /** A2 (perf): gói dữ liệu trang chủ trong 1 lượt gọi (dashboard dùng). */
+  async getHomeBundle() {
+    const pregnancy = await this.getPregnancy()
+    const [dashboard, mealsToday, water, fetuses, birthRecord] = await Promise.all([
+      this.getDashboard(),
+      this.getMealsByDate(REAL_TODAY),
+      this.getWaterCaffeine(),
+      this.getFetuses(),
+      this.getBirthRecord().catch(() => null),
+    ])
+    return { pregnancy, dashboard, mealsToday, water, fetuses, birthRecord }
+  },
+
   async getPregnancy(): Promise<D.Pregnancy | null> {
     return listRows<D.Pregnancy>('pregnancies', scope()).find((p) => p.status === 'ongoing') ?? null
   },

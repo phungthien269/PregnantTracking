@@ -218,7 +218,7 @@ export default async function WeekPage({ params }: { params: Promise<{ week: str
           <ul className="space-y-2">
             {guide.warnings.map((w) => (
               <li key={w} className="flex items-start gap-2 text-sm text-fg">
-                <span aria-hidden className="mt-0.5 shrink-0 font-bold text-warning">
+                <span aria-hidden className="mt-0.5 shrink-0 font-semibold text-warning">
                   !
                 </span>
                 <span>{w}</span>

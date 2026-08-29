@@ -12,8 +12,22 @@ import type { MealType, SymptomSeverity } from '@mevabe/domain'
 import { fetusDisplayName, fetusSummary } from '@/lib/multi-fetus'
 
 export default async function DashboardPage() {
-  const preg = await data.getPregnancy().catch(() => null)
-  if (!preg) {
+  // A2 (perf): 1 lượt getHomeBundle thay 6 gọi riêng; tầng chưa implement → fallback cũ.
+  const bundle = data.getHomeBundle
+    ? await data.getHomeBundle()
+    : await (async () => {
+        const pregnancy = await data.getPregnancy().catch(() => null)
+        if (!pregnancy) return null
+        const [dashboard, mealsToday, water, fetuses, birthRecord] = await Promise.all([
+          data.getDashboard(),
+          data.getMealsByDate(todayStr()),
+          data.getWaterCaffeine(),
+          data.getFetuses(),
+          data.getBirthRecord().catch(() => null),
+        ])
+        return { pregnancy, dashboard, mealsToday, water, fetuses, birthRecord }
+      })()
+  if (!bundle?.pregnancy) {
     return (
       <div className="space-y-6">
         <PageHeader title="Chào mừng" description="Tạo hành trình thai kỳ để bắt đầu theo dõi." />
@@ -29,14 +43,7 @@ export default async function DashboardPage() {
       </div>
     )
   }
-
-  const [dash, meals, water, fetuses, birth] = await Promise.all([
-    data.getDashboard(),
-    data.getMealsByDate(todayStr()),
-    data.getWaterCaffeine(),
-    data.getFetuses(),
-    data.getBirthRecord().catch(() => null),
-  ])
+  const { pregnancy: preg, dashboard: dash, mealsToday: meals, water, fetuses, birthRecord: birth } = bundle
   // getFetuses() trả toàn bộ thai của gia đình → lọc theo thai kỳ đang theo dõi.
   const activeFetuses = fetuses.filter((f) => f.pregnancy_id === preg.id)
   const isMulti = activeFetuses.length > 1

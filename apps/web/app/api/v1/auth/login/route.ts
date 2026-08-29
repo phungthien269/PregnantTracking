@@ -1,5 +1,6 @@
 import { sha256Hex, loginSchema } from '@/lib/auth/core'
 import { apiOk, apiError } from '@/lib/api-utils'
+import { bridgeSupabaseLogin } from '@/lib/auth/supabase-bridge'
 import {
   ensureAuthSeed,
   dbUserByEmail,
@@ -40,7 +41,7 @@ export async function POST(req: Request): Promise<Response> {
   const hash = await sha256Hex(user.salt + parsed.data.password)
   if (hash !== user.hash) return apiError('INVALID_CREDENTIALS', 'Email hoặc mật khẩu không đúng')
   const session = dbCreateSession(user.id)
-  return apiOk({
+  const res = apiOk({
     session: {
       token: session.token,
       user_id: user.id,
@@ -50,4 +51,7 @@ export async function POST(req: Request): Promise<Response> {
     },
     family: familyContext(user),
   })
+  // Cầu Supabase: cấp JWT cho tầng dữ liệu Supabase (RLS auth.uid()) khi cấu hình.
+  await bridgeSupabaseLogin(res, user.email, parsed.data.password)
+  return res
 }
