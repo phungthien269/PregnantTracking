@@ -3,8 +3,8 @@
 // - Supabase: ghi qua client server (cookie `sb_token`) + RLS; private_owner_id
 //   = user đang đăng nhập → mỗi người chỉ thấy/tạo chat của mình. family_id lấy
 //   từ family_members (cùng pattern lib/library/store.ts + lib/data/supabase.ts).
-// - Mock (không env): in-memory theo user (demo, mất khi restart server) —
-//   KHÔNG phá chạy demo cũ khi chưa nối backend.
+// - Local (không env Supabase): SQLite qua lib/db/local — LƯU BỀN qua restart
+//   (từ 2026-08-29; trước đây in-memory mất khi restart).
 //
 // Module SERVER-ONLY (dùng next/headers) — KHÔNG import từ client bundle.
 // Route/page gọi qua `chatStore` export bên dưới.
@@ -15,6 +15,7 @@ import { isSupabaseConfigured } from '@/lib/supabase'
 import { getServerSupabase } from '@/lib/supabase-server'
 import { getActiveUser } from '@/lib/auth/active-user'
 import { data } from '@/lib/data'
+import { findRow, insertRow, listRows, updateRow } from '@/lib/db/local'
 import type { AiMessage } from './client'
 
 // ---------------------------------------------------------------------------
@@ -238,101 +239,137 @@ async function getAiHistorySupabase(sessionId: string, limit = 10): Promise<AiMe
 }
 
 // ---------------------------------------------------------------------------
-// Mock (in-memory theo user — demo, không cần backend)
+// Local (SQLite qua lib/db/local) — demo mode nhưng LƯU BỀN: lịch sử hội thoại
+// sống qua restart (trước đây in-memory, mất khi restart server).
 // ---------------------------------------------------------------------------
 
-interface MockMessage {
+function localCtx(): { uid: string; familyId: string } | null {
+  const au = getActiveUser()
+  if (!au) return null
+  return { uid: au.user_id, familyId: au.family_id }
+}
+
+interface LocalSessionRow {
   id: string
-  session_id: string
+  private_owner_id: string | null
+  title: string | null
+  stage: string | null
+  model: string | null
+  status: string
+  pinned: number | boolean
+  created_at: string
+  updated_at: string
+}
+
+interface LocalMessageRow {
+  id: string
+  private_owner_id: string | null
   role: 'user' | 'assistant'
   content: string
-  sourceIds: string[]
+  sources?: string[]
   created_at: string
 }
 
-const mockSessionsByUser = new Map<string, ChatSessionView[]>()
-const mockMessagesBySession = new Map<string, MockMessage[]>()
-
-function mockUserId(): string {
-  return getActiveUser()?.user_id ?? 'demo'
-}
-
-function mockSessions(): ChatSessionView[] {
-  const key = mockUserId()
-  let arr = mockSessionsByUser.get(key)
-  if (!arr) {
-    arr = []
-    mockSessionsByUser.set(key, arr)
-  }
-  return arr
-}
-
-async function ensureSessionMock(opts: {
+async function ensureSessionLocal(opts: {
   sessionId?: string | null
   title?: string | null
   stage?: string | null
   model?: string | null
 }): Promise<{ sessionId: string } | null> {
-  const sessions = mockSessions()
+  const ctx = localCtx()
+  if (!ctx) return null
+
   if (opts.sessionId) {
-    const existing = sessions.find((s) => s.id === opts.sessionId)
-    if (existing) {
-      existing.updated_at = now()
+    const existing = findRow<LocalSessionRow>('chat_sessions', opts.sessionId)
+    if (existing && existing.private_owner_id === ctx.uid) {
+      updateRow('chat_sessions', existing.id, { updated_at: now() })
       return { sessionId: existing.id }
     }
   }
+
   const id = crypto.randomUUID()
-  sessions.unshift({
+  const t = now()
+  insertRow('chat_sessions', {
     id,
+    family_id: ctx.familyId,
+    private_owner_id: ctx.uid,
     title: opts.title?.slice(0, 50) ?? null,
     stage: opts.stage ?? null,
     model: opts.model ?? null,
     status: 'active',
     pinned: false,
-    created_at: now(),
-    updated_at: now(),
+    created_at: t,
+    updated_at: t,
   })
-  mockMessagesBySession.set(id, [])
   return { sessionId: id }
 }
 
-async function appendMessageMock(input: AppendMessageInput): Promise<void> {
-  const messages = mockMessagesBySession.get(input.sessionId) ?? []
-  messages.push({
+async function appendMessageLocal(input: AppendMessageInput): Promise<void> {
+  const ctx = localCtx()
+  if (!ctx) return
+  insertRow('chat_messages', {
     id: crypto.randomUUID(),
+    family_id: ctx.familyId,
+    private_owner_id: ctx.uid,
     session_id: input.sessionId,
     role: input.role,
     content: input.content,
-    sourceIds: input.sources ?? [],
+    sources: input.sources ?? [],
     created_at: input.created_at ?? now(),
   })
-  mockMessagesBySession.set(input.sessionId, messages)
-  const s = mockSessions().find((x) => x.id === input.sessionId)
-  if (s) s.updated_at = now()
+  updateRow('chat_sessions', input.sessionId, { updated_at: now() })
 }
 
-async function listSessionsMock(): Promise<ChatSessionView[]> {
-  return [...mockSessions()]
+async function listSessionsLocal(): Promise<ChatSessionView[]> {
+  const ctx = localCtx()
+  if (!ctx) return []
+  const rows = listRows<LocalSessionRow>('chat_sessions', { familyId: ctx.familyId }).filter(
+    (s) => s.private_owner_id === ctx.uid,
+  )
+  return rows
+    .sort((a, b) => b.updated_at.localeCompare(a.updated_at))
+    .map((s) => ({
+      id: s.id,
+      title: s.title,
+      stage: s.stage,
+      model: s.model,
+      status: (s.status as 'active' | 'archived') ?? 'active',
+      pinned: Boolean(s.pinned),
+      created_at: s.created_at,
+      updated_at: s.updated_at,
+    }))
 }
 
-async function listMessagesMock(sessionId: string): Promise<ChatMessageView[]> {
-  const messages = mockMessagesBySession.get(sessionId) ?? []
-  const allIds = [...new Set(messages.flatMap((m) => m.sourceIds))]
+async function listMessagesLocal(sessionId: string): Promise<ChatMessageView[]> {
+  const ctx = localCtx()
+  if (!ctx) return []
+  const rows = listRows<LocalMessageRow>('chat_messages', {
+    familyId: ctx.familyId,
+    where: { session_id: sessionId },
+  }).filter((m) => m.private_owner_id === ctx.uid)
+  rows.sort((a, b) => a.created_at.localeCompare(b.created_at))
+  const allIds = [...new Set(rows.flatMap((m) => m.sources ?? []))]
   const refs = await resolveSources(allIds)
   const refMap = new Map(refs.map((r) => [r.id, r]))
-  return messages.map((m) => ({
+  return rows.map((m) => ({
     id: m.id,
-    session_id: m.session_id,
+    session_id: sessionId,
     role: m.role,
     content: m.content,
-    sources: m.sourceIds.map((id) => refMap.get(id) ?? { id, title: 'Nguồn thư viện', source: '' }),
+    sources: (m.sources ?? []).map((id) => refMap.get(id) ?? { id, title: 'Nguồn thư viện', source: '' }),
     created_at: m.created_at,
   }))
 }
 
-async function getAiHistoryMock(sessionId: string, limit = 10): Promise<AiMessage[]> {
-  const messages = mockMessagesBySession.get(sessionId) ?? []
-  return messages.slice(-limit).map((m) => ({ role: m.role, content: m.content }))
+async function getAiHistoryLocal(sessionId: string, limit = 10): Promise<AiMessage[]> {
+  const ctx = localCtx()
+  if (!ctx) return []
+  const rows = listRows<LocalMessageRow>('chat_messages', {
+    familyId: ctx.familyId,
+    where: { session_id: sessionId },
+  }).filter((m) => m.private_owner_id === ctx.uid)
+  rows.sort((a, b) => a.created_at.localeCompare(b.created_at))
+  return rows.slice(-limit).map((m) => ({ role: m.role, content: m.content }))
 }
 
 // ---------------------------------------------------------------------------
@@ -348,9 +385,9 @@ export const chatStore: ChatStore = isSupabaseConfigured()
       getAiHistory: getAiHistorySupabase,
     }
   : {
-      ensureSession: ensureSessionMock,
-      appendMessage: appendMessageMock,
-      listSessions: listSessionsMock,
-      listMessages: listMessagesMock,
-      getAiHistory: getAiHistoryMock,
+      ensureSession: ensureSessionLocal,
+      appendMessage: appendMessageLocal,
+      listSessions: listSessionsLocal,
+      listMessages: listMessagesLocal,
+      getAiHistory: getAiHistoryLocal,
     }
