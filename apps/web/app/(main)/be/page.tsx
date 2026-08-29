@@ -18,8 +18,11 @@ interface ChildRow {
 const genderLabel = (g?: Gender | null) => (g === 'male' ? 'Bé trai' : g === 'female' ? 'Bé gái' : null)
 
 export default async function BePage() {
-  const birth = await data.getBirthRecord().catch(() => null)
-  const children = await data.getChildren()
+  // 2 lượt gọi độc lập → chạy song song (perf: bớt 1 roundtrip ở chế độ Supabase).
+  const [birth, children] = await Promise.all([
+    data.getBirthRecord().catch(() => null),
+    data.getChildren(),
+  ])
 
   return (
     <div className="space-y-6">

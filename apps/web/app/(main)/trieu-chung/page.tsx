@@ -6,8 +6,11 @@ import { weekFromLmp } from '@/lib/pregnancy-math'
 import { SectionTabs, THAI_KY_TABS, SUC_KHOE_TABS } from '@/components/section-tabs'
 
 export default async function TrieuChungPage() {
-  const symptoms = await data.getSymptoms()
-  const pregnancy = await data.getPregnancy()
+  // 2 lượt gọi độc lập → song song (perf).
+  const [symptoms, pregnancy] = await Promise.all([
+    data.getSymptoms(),
+    data.getPregnancy().catch(() => null),
+  ])
   // Cá nhân hoá gợi ý món theo tuần thai (null nếu chưa có thai kỳ).
   const week = pregnancy?.lmp ? weekFromLmp(pregnancy.lmp) : null
   return (
