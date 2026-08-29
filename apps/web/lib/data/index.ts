@@ -100,6 +100,11 @@ export const data: DataApi = new Proxy({} as DataApi, {
     return async (...args: unknown[]) => {
       const api = await resolveApi()
       const fn = Reflect.get(api, prop, api) as (...a: unknown[]) => unknown
+      // Method optional (vd getHomeBundle) chưa implement ở mode hiện tại → báo lỗi
+      // RÕ RÀNG thay vì "undefined.apply" khó hiểu. Caller nên try/catch + fallback.
+      if (typeof fn !== 'function') {
+        throw new Error(`[data] Method ${String(prop)} chưa được implement ở chế độ dữ liệu hiện tại`)
+      }
       if (typeof prop === 'string' && HOT_READS.has(prop)) {
         let memo = memoCache.get(prop)
         if (!memo) {

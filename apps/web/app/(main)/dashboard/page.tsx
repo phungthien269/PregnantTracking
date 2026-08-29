@@ -13,21 +13,28 @@ import { fetusDisplayName, fetusSummary } from '@/lib/multi-fetus'
 export default async function DashboardPage() {
   // R6 (perf): nạp muộn chart — tách khỏi First Load JS của dashboard.
   const { LineChart } = await import('@/components/line-chart')
-  // A2 (perf): 1 lượt getHomeBundle thay 6 gọi riêng; tầng chưa implement → fallback cũ.
-  const bundle = data.getHomeBundle
-    ? await data.getHomeBundle()
-    : await (async () => {
-        const pregnancy = await data.getPregnancy().catch(() => null)
-        if (!pregnancy) return null
-        const [dashboard, mealsToday, water, fetuses, birthRecord] = await Promise.all([
-          data.getDashboard(),
-          data.getMealsByDate(todayStr()),
-          data.getWaterCaffeine(),
-          data.getFetuses(),
-          data.getBirthRecord().catch(() => null),
-        ])
-        return { pregnancy, dashboard, mealsToday, water, fetuses, birthRecord }
-      })()
+  // A2 (perf): 1 lượt getHomeBundle thay 6 gọi riêng. getHomeBundle là method
+  // OPTIONAL — mode chưa implement (hoặc lỗi tạm) → fallback Promise.all như cũ.
+  let bundle: Awaited<ReturnType<NonNullable<typeof data.getHomeBundle>>> | null = null
+  try {
+    bundle = (await data.getHomeBundle?.()) ?? null
+  } catch {
+    bundle = null
+  }
+  if (!bundle) {
+    const pregnancy = await data.getPregnancy().catch(() => null)
+    if (!pregnancy) bundle = null
+    else {
+      const [dashboard, mealsToday, water, fetuses, birthRecord] = await Promise.all([
+        data.getDashboard(),
+        data.getMealsByDate(todayStr()),
+        data.getWaterCaffeine(),
+        data.getFetuses(),
+        data.getBirthRecord().catch(() => null),
+      ])
+      bundle = { pregnancy, dashboard, mealsToday, water, fetuses, birthRecord }
+    }
+  }
   if (!bundle?.pregnancy) {
     return (
       <div className="space-y-6">
