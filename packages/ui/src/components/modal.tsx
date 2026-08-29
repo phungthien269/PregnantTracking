@@ -79,7 +79,7 @@ export function Modal({
         aria-modal="true"
         aria-label={title}
         tabIndex={-1}
-        className="relative max-h-[85vh] w-full max-w-md overflow-y-auto rounded-lg border border-border bg-surface p-5 shadow-pop focus:outline-none"
+        className="modal-pop relative max-h-[85vh] w-full max-w-md overflow-y-auto rounded-lg border border-border bg-surface p-5 shadow-pop focus:outline-none"
       >
         <div className="flex items-start justify-between gap-3">
           <h2 className="text-base font-semibold text-fg">{title}</h2>

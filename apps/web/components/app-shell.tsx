@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
+import { useEffect } from 'react'
 import { Badge, Button, cx } from '@mevabe/ui'
 import { dataMode } from '@/lib/data/client-entry'
 import { useSession } from '@/lib/auth/session-context'
@@ -25,6 +26,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     await logout()
     router.replace('/dang-nhap')
   }
+
+  // R2 (perf): đã đăng nhập → prefetch 4 route hay dùng nhất lúc máy rảnh
+  // (chuyển trang sau đó gần như tức thì; Link vẫn prefetch khi hiện trong màn hình).
+  useEffect(() => {
+    if (!session) return
+    const t = setTimeout(() => {
+      for (const href of ['/nhap-lieu', '/ban-tin-sang', '/be', '/cai-dat']) {
+        router.prefetch(href)
+      }
+    }, 1500)
+    return () => clearTimeout(t)
+  }, [router, session])
 
   return (
     <div className="min-h-dvh bg-bg">
