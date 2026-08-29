@@ -1946,7 +1946,15 @@ async function demo(): Promise<void> {
   assert((await mockApi.getWeekInfo(99)).week === 41, 'getWeekInfo clamp cao')
 
   const dash = await mockApi.getDashboard()
-  assert(dash.week === 20 && dash.daysLeft === 140 && dash.dueDate === '2026-12-21', 'dashboard (Naegele)')
+  // Tuần thai derive từ LMP seed + NGÀY THẬT (weekFromLmp dùng REAL_TODAY) nên KHÔNG
+  // assert cứng số tuần — nó tự trôi theo lịch (lỗi "hạn sử dụng" từng khiến demo
+  // fail khi sang tuần 21+). daysLeft/dueDate thì neo vào đồng hồ demo TODAY/EDD cố định.
+  assert(
+    dash.week === weekFromLmp(LMP)
+      && dash.daysLeft === Math.round((Date.parse(EDD) - Date.parse(TODAY)) / DAY_MS)
+      && dash.dueDate === EDD,
+    'dashboard (Naegele)',
+  )
   assert(dash.mealCountToday === 5 && dash.waterGoalMl === 2000, 'dashboard meals/nước')
   assert(dash.upcomingAppointments.length >= 1, 'dashboard upcomingAppointments')
 
@@ -1998,7 +2006,9 @@ async function demo(): Promise<void> {
   const upd2 = (await mockApi.getPregnancy())!
   assert(upd2.lmp === '2026-05-01' && upd2.edd === '2027-02-05', 'updatePregnancy EDD→LMP trùng khớp')
   const dashAfter = await mockApi.getDashboard()
-  assert(dashAfter.week === 13 && dashAfter.week !== dashBefore.week, 'updatePregnancy đổi tuần trên dashboard')
+  // Tuần sau updatePregnancy = weekFromLmp(LMP mới, REAL_TODAY) — không assert cứng
+  // số tuần (đổi theo ngày thật, xem ghi chú assert dashboard ở trên).
+  assert(dashAfter.week === weekFromLmp('2026-05-01') && dashAfter.week !== dashBefore.week, 'updatePregnancy đổi tuần trên dashboard')
 
   const symCount = (await mockApi.getSymptoms()).length
   const imp = await mockApi.importSymptoms([

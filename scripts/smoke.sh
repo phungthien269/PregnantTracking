@@ -17,6 +17,12 @@
 # ===========================================================================
 set -u
 
+# Ép chế độ dữ liệu LOCAL (SQLite) cho smoke: NEXT_PUBLIC_* được inline lúc build,
+# nên phải ghi đè TRƯỚC khi build/start. Supabase env (nếu có) sẽ làm mọi route dữ
+# liệu 500 khi project Supabase không truy cập được. Xem apps/web/.env.local.
+export NEXT_PUBLIC_SUPABASE_URL=""
+export NEXT_PUBLIC_SUPABASE_ANON_KEY=""
+
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WEB="$ROOT/apps/web"
 NEXT_BIN="$WEB/node_modules/.bin/next"
