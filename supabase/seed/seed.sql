@@ -279,6 +279,12 @@ values
   ('10000000-0000-0000-0000-000000000001', '40000000-0000-0000-0000-000000000001', 'user', 'Caffeine bao nhiêu là an toàn khi mang thai?', array[]::uuid[], '2026-08-03T08:04:00+07:00', now()),
   ('10000000-0000-0000-0000-000000000001', '40000000-0000-0000-0000-000000000001', 'assistant', 'Khuyến nghị giới hạn dưới 200 mg caffeine mỗi ngày.', array['40000000-0000-0000-0000-000000000011']::uuid[], '2026-08-03T08:05:00+07:00', now());
 
+-- ---- Nước hôm nay (1400ml — logged_at theo NGÀY THẬT VN để dashboard "hôm nay" sinh động) ----
+insert into public.hydration_logs (id, family_id, private_owner_id, logged_at, amount_ml, source, created_at, updated_at)
+values (gen_random_uuid(), '10000000-0000-0000-0000-000000000001', null,
+  (to_char((now() at time zone 'Asia/Ho_Chi_Minh')::date, 'YYYY-MM-DD') || ' 07:30:00+07')::timestamptz,
+  1400, 'manual', now(), now());
+
 set session_replication_role = 'origin';
 
 commit;
