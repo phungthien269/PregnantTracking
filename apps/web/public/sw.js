@@ -8,7 +8,7 @@
  *  - POST/PUT/PATCH/DELETE: không cache (để trình duyệt fetch bình thường).
  * Bump VERSION khi deploy đổi tài sản tĩnh để phá cache cũ.
  */
-const VERSION = 'v3'
+const VERSION = 'v4'
 const SHELL_CACHE = `mevabe-shell-${VERSION}`
 const STATIC_CACHE = `mevabe-static-${VERSION}`
 const API_CACHE = `mevabe-api-${VERSION}`
@@ -163,6 +163,37 @@ async function staleWhileRevalidate(request, cacheName, event, options = {}) {
   }
 }
 
+/* R4 — điều hướng thông minh: đợi mạng tối đa raceMs; quá hạn mà có cache →
+ * trả cache NGAY (mạng chậm không ép mẹ chờ), mạng xong tự cập nhật ngầm.
+ * Không có cache → chờ mạng như cũ; offline → fallback offline shell. */
+async function navigationRace(request, cacheName, event, options = {}) {
+  const cache = await caches.open(cacheName)
+  const update = fetch(request)
+    .then((response) => {
+      if (response && response.ok) cache.put(request, response.clone())
+      return response
+    })
+    .catch(() => null)
+  const timeout = new Promise((resolve) => setTimeout(() => resolve('timeout'), options.raceMs || 800))
+  const winner = await Promise.race([update, timeout])
+  if (winner === 'timeout') {
+    const cached = await caches.match(request)
+    if (cached) {
+      if (event && event.waitUntil) event.waitUntil(update)
+      return cached
+    }
+    const response = await update
+    if (response) return response
+    const fallbackCached = options.fallback ? await caches.match(options.fallback) : null
+    if (fallbackCached) return fallbackCached
+    return new Response(options.body || null, {
+      status: options.status || 200,
+      headers: options.headers || { 'Content-Type': 'text/html; charset=utf-8' },
+    })
+  }
+  return winner
+}
+
 self.addEventListener('fetch', (event) => {
   const request = event.request
   // Chỉ xử lý GET; POST/PUT/PATCH/DELETE để trình duyệt fetch bình thường.
@@ -189,10 +220,11 @@ self.addEventListener('fetch', (event) => {
     return
   }
 
-  // Điều hướng trang: network-first, fallback offline shell, cuối cùng là trang ngoại tuyến.
+  // Điều hướng trang: mạng nhanh → mới nhất; mạng chậm >800ms → cache trước,
+  // cập nhật ngầm; offline → offline shell.
   if (request.mode === 'navigate') {
     event.respondWith(
-      networkFirst(request, SHELL_CACHE, { fallback: '/dashboard', body: OFFLINE_HTML })
+      navigationRace(request, SHELL_CACHE, event, { fallback: '/dashboard', body: OFFLINE_HTML })
     )
     return
   }

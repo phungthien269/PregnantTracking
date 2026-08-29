@@ -1,4 +1,5 @@
 import type { DataApi } from './api'
+import { cache } from 'react'
 
 // ===========================================================================
 // Resolver DataApi — entry SERVER-SIDE (route handler + server component).
@@ -73,11 +74,40 @@ function resolveApi(): Promise<DataApi> {
  * DataApi đều async → mỗi lần truy cập property trả async fn; module thật chỉ
  * được resolve ở lần gọi method đầu tiên.
  */
+/**
+ * R3 (perf): memoize PER-REQUEST các read nóng — cùng request gọi 2 lần (page +
+ * component con) chỉ tính 1 lần, cắt bớt roundtrip Supabase / query SQLite lặp.
+ * Chỉ áp cho getter đọc thuần; mutation và getHomeBundle (tự gộp) đi đường thường.
+ * cache() của React: phạm vi 1 request → dữ liệu user vẫn tươi ở request sau.
+ */
+const HOT_READS = new Set([
+  'getPregnancy',
+  'getDashboard',
+  'getFetuses',
+  'getWaterCaffeine',
+  'getMeasurements',
+  'getSymptoms',
+  'getAppointments',
+  'getChildren',
+  'getNutritionProfile',
+  'getMealsByDate',
+])
+
+const memoCache = new Map<string, ReturnType<typeof cache>>()
+
 export const data: DataApi = new Proxy({} as DataApi, {
   get(_target, prop) {
     return async (...args: unknown[]) => {
       const api = await resolveApi()
       const fn = Reflect.get(api, prop, api) as (...a: unknown[]) => unknown
+      if (typeof prop === 'string' && HOT_READS.has(prop)) {
+        let memo = memoCache.get(prop)
+        if (!memo) {
+          memo = cache((...a: unknown[]) => fn.apply(api, a))
+          memoCache.set(prop, memo)
+        }
+        return (memo as (...a: unknown[]) => unknown)(...args)
+      }
       return fn.apply(api, args)
     }
   },

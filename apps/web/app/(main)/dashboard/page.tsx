@@ -5,13 +5,14 @@ import { fmtDate, fmtDayMonth, fmtDateTime, todayStr } from '@/lib/format'
 import { APPOINTMENT_LABELS, MEAL_LABELS, SEVERITY_LABELS, TRIMESTER_LABELS } from '@/lib/labels'
 import { EmergencyCard } from '@/components/emergency-card'
 import { PageHeader } from '@/components/page-header'
-import { LineChart } from '@/components/line-chart'
 import { PregnancyOverview } from '@/components/pregnancy-overview'
 import { Badge, buttonClasses, Card, EmptyState, ProgressRing, StatCard } from '@mevabe/ui'
 import type { MealType, SymptomSeverity } from '@mevabe/domain'
 import { fetusDisplayName, fetusSummary } from '@/lib/multi-fetus'
 
 export default async function DashboardPage() {
+  // R6 (perf): nạp muộn chart — tách khỏi First Load JS của dashboard.
+  const { LineChart } = await import('@/components/line-chart')
   // A2 (perf): 1 lượt getHomeBundle thay 6 gọi riêng; tầng chưa implement → fallback cũ.
   const bundle = data.getHomeBundle
     ? await data.getHomeBundle()
