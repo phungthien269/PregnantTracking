@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { data } from '@/lib/data/client-entry'
+import { isOfflineError, OFFLINE_MESSAGE } from '@/lib/api-error'
 import { SHOPPING_STATUS_LABELS } from '@/lib/labels'
 import { todayStr } from '@/lib/format'
 import { Badge, Button, Card, EmptyState, Field, Input, Modal, Select, StatCard, Toggle } from '@mevabe/ui'
@@ -49,6 +50,8 @@ export function ShoppingBoard({ items, budget }: { items: ShoppingItem[]; budget
   const [name, setName] = useState('')
   const [est, setEst] = useState('')
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [error, setError] = useState('')
+  const [savingShop, setSavingShop] = useState(false)
 
   // ---- Mua sắm: sửa / xoá ----
   const [editItem, setEditItem] = useState<ShoppingItem | null>(null)
@@ -66,6 +69,7 @@ export function ShoppingBoard({ items, budget }: { items: ShoppingItem[]; budget
   const [bCategory, setBCategory] = useState('')
   const [bDate, setBDate] = useState(todayStr())
   const [bNote, setBNote] = useState('')
+  const [savingBudgetAdd, setSavingBudgetAdd] = useState(false)
 
   // ---- Ngân sách: sửa ----
   const [edit, setEdit] = useState<BudgetEntry | null>(null)
@@ -93,18 +97,29 @@ export function ShoppingBoard({ items, budget }: { items: ShoppingItem[]; budget
 
   const add = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!name.trim()) return
-    await data.addShoppingItem({ name: name.trim(), estimated_price: est ? Number(est) : null })
-    setName('')
-    setEst('')
-    router.refresh()
+    if (!name.trim() || savingShop) return
+    setSavingShop(true)
+    setError('')
+    try {
+      await data.addShoppingItem({ name: name.trim(), estimated_price: est ? Number(est) : null })
+      setName('')
+      setEst('')
+      router.refresh()
+    } catch (err) {
+      setError(isOfflineError(err) ? OFFLINE_MESSAGE : err instanceof Error && err.message ? err.message : 'Chưa thêm được món — mẹ thử lại.')
+    } finally {
+      setSavingShop(false)
+    }
   }
 
   const toggle = async (i: ShoppingItem) => {
     setBusyId(i.id)
+    setError('')
     try {
       await data.toggleShopping(i.id, i.status !== 'bought')
       router.refresh()
+    } catch (err) {
+      setError(isOfflineError(err) ? OFFLINE_MESSAGE : err instanceof Error && err.message ? err.message : 'Chưa cập nhật được — mẹ thử lại.')
     } finally {
       setBusyId(null)
     }
@@ -120,8 +135,9 @@ export function ShoppingBoard({ items, budget }: { items: ShoppingItem[]; budget
 
   const saveItemEdit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!editItem || !seName.trim()) return
+    if (!editItem || !seName.trim() || savingItem) return
     setSavingItem(true)
+    setError('')
     try {
       await data.updateShoppingItem(editItem.id, {
         name: seName.trim(),
@@ -131,6 +147,8 @@ export function ShoppingBoard({ items, budget }: { items: ShoppingItem[]; budget
       })
       setEditItem(null)
       router.refresh()
+    } catch (err) {
+      setError(isOfflineError(err) ? OFFLINE_MESSAGE : err instanceof Error && err.message ? err.message : 'Chưa lưu được thay đổi — mẹ thử lại.')
     } finally {
       setSavingItem(false)
     }
@@ -139,9 +157,12 @@ export function ShoppingBoard({ items, budget }: { items: ShoppingItem[]; budget
   const removeItem = async (i: ShoppingItem) => {
     setConfirmDelete(null)
     setBusyId(i.id)
+    setError('')
     try {
       await data.deleteShoppingItem(i.id)
       router.refresh()
+    } catch (err) {
+      setError(isOfflineError(err) ? OFFLINE_MESSAGE : err instanceof Error && err.message ? err.message : 'Chưa xoá được — mẹ thử lại.')
     } finally {
       setBusyId(null)
     }
@@ -149,20 +170,28 @@ export function ShoppingBoard({ items, budget }: { items: ShoppingItem[]; budget
 
   const addBudgetEntry = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!bTitle.trim() || !bAmount) return
-    await data.addBudget({
-      title: bTitle.trim(),
-      amount: Number(bAmount),
-      type: bType,
-      category: bCategory.trim() || null,
-      occurred_at: bDate,
-      note: bNote.trim() || null,
-    })
-    setBTitle('')
-    setBAmount('')
-    setBCategory('')
-    setBNote('')
-    router.refresh()
+    if (!bTitle.trim() || !bAmount || savingBudgetAdd) return
+    setSavingBudgetAdd(true)
+    setError('')
+    try {
+      await data.addBudget({
+        title: bTitle.trim(),
+        amount: Number(bAmount),
+        type: bType,
+        category: bCategory.trim() || null,
+        occurred_at: bDate,
+        note: bNote.trim() || null,
+      })
+      setBTitle('')
+      setBAmount('')
+      setBCategory('')
+      setBNote('')
+      router.refresh()
+    } catch (err) {
+      setError(isOfflineError(err) ? OFFLINE_MESSAGE : err instanceof Error && err.message ? err.message : 'Chưa thêm được khoản thu/chi — mẹ thử lại.')
+    } finally {
+      setSavingBudgetAdd(false)
+    }
   }
 
   const startEdit = (b: BudgetEntry) => {
@@ -177,8 +206,9 @@ export function ShoppingBoard({ items, budget }: { items: ShoppingItem[]; budget
 
   const saveEdit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!edit || !eTitle.trim() || !eAmount) return
+    if (!edit || !eTitle.trim() || !eAmount || savingBudget) return
     setSavingBudget(true)
+    setError('')
     try {
       await data.updateBudget(edit.id, {
         title: eTitle.trim(),
@@ -190,6 +220,8 @@ export function ShoppingBoard({ items, budget }: { items: ShoppingItem[]; budget
       })
       setEdit(null)
       router.refresh()
+    } catch (err) {
+      setError(isOfflineError(err) ? OFFLINE_MESSAGE : err instanceof Error && err.message ? err.message : 'Chưa lưu được thay đổi — mẹ thử lại.')
     } finally {
       setSavingBudget(false)
     }
@@ -197,9 +229,12 @@ export function ShoppingBoard({ items, budget }: { items: ShoppingItem[]; budget
 
   const addTaskFromItem = async (i: ShoppingItem) => {
     setBusyId(i.id)
+    setError('')
     try {
       await data.addTask({ title: `Mua: ${i.name}` })
       router.refresh()
+    } catch (err) {
+      setError(isOfflineError(err) ? OFFLINE_MESSAGE : err instanceof Error && err.message ? err.message : 'Chưa thêm được công việc — mẹ thử lại.')
     } finally {
       setBusyId(null)
     }
@@ -207,6 +242,12 @@ export function ShoppingBoard({ items, budget }: { items: ShoppingItem[]; budget
 
   return (
     <div className="space-y-6">
+      {error && (
+        <p role="alert" className="rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">
+          {error}
+        </p>
+      )}
+
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatCard label="Tổng thu" value={money(totalIncome)} tone="success" />
         <StatCard label="Tổng chi (ngân sách)" value={money(totalExpense)} tone="warning" />
@@ -237,8 +278,8 @@ export function ShoppingBoard({ items, budget }: { items: ShoppingItem[]; budget
             <Input id="b-note" value={bNote} onChange={(e) => setBNote(e.target.value)} placeholder="Không bắt buộc" />
           </Field>
           <div className="flex items-end sm:col-span-2 lg:col-span-3">
-            <Button type="submit" disabled={!bTitle.trim() || !bAmount}>
-              Thêm
+            <Button type="submit" disabled={!bTitle.trim() || !bAmount || savingBudgetAdd}>
+              {savingBudgetAdd ? 'Đang lưu…' : 'Thêm'}
             </Button>
           </div>
         </form>
@@ -321,8 +362,8 @@ export function ShoppingBoard({ items, budget }: { items: ShoppingItem[]; budget
             <Input id="shop-est" type="number" inputMode="numeric" value={est} onChange={(e) => setEst(e.target.value)} placeholder="VD: 200000" />
           </Field>
           <div className="flex items-end">
-            <Button type="submit" disabled={!name.trim()} className="w-full sm:w-auto">
-              Thêm
+            <Button type="submit" disabled={!name.trim() || savingShop} className="w-full sm:w-auto">
+              {savingShop ? 'Đang lưu…' : 'Thêm'}
             </Button>
           </div>
         </form>

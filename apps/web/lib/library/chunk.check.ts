@@ -5,7 +5,7 @@
 // Chạy: scripts/test-web.sh.
 // ===========================================================================
 
-import { chunkText, type Chunk } from './chunk'
+import { chunkText } from './chunk'
 
 const assert = (cond: unknown, msg: string): void => {
   if (!cond) throw new Error(`❌ ${msg}`)

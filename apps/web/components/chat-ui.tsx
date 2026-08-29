@@ -6,12 +6,6 @@ import { apiErrorMessage } from '@/lib/api-error'
 import { Badge, Button, Card, Toggle, cx } from '@mevabe/ui'
 import type { ChatRole } from '@mevabe/domain'
 
-interface SourceRef {
-  id: string
-  title: string
-  source: string
-}
-
 interface SessionRow {
   id: string
   title: string | null
@@ -200,7 +194,6 @@ export function ChatUI({ initialSessions, initialSessionId, initialMessages }: C
                   type="button"
                   role="listitem"
                   onClick={() => selectSession(s.id)}
-                  aria-pressed={active}
                   className={cx(
                     'flex shrink-0 items-center gap-2 rounded-full border px-3 py-1.5 text-xs transition-colors',
                     'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',

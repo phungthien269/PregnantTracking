@@ -18,7 +18,7 @@ async function main(): Promise<void> {
 
   // 1. startPregnancy fetalCount=3 → 3 fetus, name A/B/C, birth_order 1..3
   const preg = await localApi.startPregnancy({ lmp: '2026-04-01', fetalCount: 3 })
-  let fs = (await localApi.getFetuses()).filter((f) => f.pregnancy_id === preg.id)
+  const fs = (await localApi.getFetuses()).filter((f) => f.pregnancy_id === preg.id)
   assert.equal(fs.length, 3, 'startPregnancy fetalCount=3 tạo 3 fetus')
   assert.deepEqual(fs.map((f) => f.name), ['A', 'B', 'C'], 'name A/B/C theo birth_order')
   assert.deepEqual(fs.map((f) => f.birth_order), [1, 2, 3], 'birth_order 1..3')

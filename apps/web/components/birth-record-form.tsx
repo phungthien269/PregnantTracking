@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { data } from '@/lib/data/client-entry'
+import { isOfflineError, OFFLINE_MESSAGE } from '@/lib/api-error'
 import { fmtDate } from '@/lib/format'
 import { BIRTH_LABELS } from '@/lib/labels'
 import { Badge, Button, Field, Input, Select, Textarea } from '@mevabe/ui'
@@ -24,6 +25,7 @@ export function BirthRecordForm({ birth }: { birth: BirthRecord | null }) {
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [error, setError] = useState('')
 
   const [birthDate, setBirthDate] = useState('')
   const [birthType, setBirthType] = useState<BirthType>('vaginal')
@@ -50,7 +52,9 @@ export function BirthRecordForm({ birth }: { birth: BirthRecord | null }) {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (saving) return
     setSaving(true)
+    setError('')
     try {
       const input = {
         birth_date: birthDate,
@@ -68,6 +72,8 @@ export function BirthRecordForm({ birth }: { birth: BirthRecord | null }) {
       setSaved(true)
       closeForm()
       router.refresh()
+    } catch (err) {
+      setError(isOfflineError(err) ? OFFLINE_MESSAGE : err instanceof Error && err.message ? err.message : 'Chưa lưu được hồ sơ sinh — mẹ thử lại.')
     } finally {
       setSaving(false)
     }
@@ -143,6 +149,11 @@ export function BirthRecordForm({ birth }: { birth: BirthRecord | null }) {
           {saving ? 'Đang lưu…' : birth ? 'Lưu thay đổi' : 'Lưu ca sinh'}
         </Button>
       </div>
+      {error && (
+        <p role="alert" className="sm:col-span-2 rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">
+          {error}
+        </p>
+      )}
     </form>
   )
 }

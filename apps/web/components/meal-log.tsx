@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { data, type NutritionFocus } from '@/lib/data/client-entry'
+import { isOfflineError, OFFLINE_MESSAGE } from '@/lib/api-error'
 import { MEAL_LABELS, MEAL_OPTIONS } from '@/lib/labels'
 import { fmtDateTime } from '@/lib/format'
 import {
@@ -43,11 +44,13 @@ export function MealLog({ meals, saved, focus }: { meals: MealRow[]; saved: Save
   const [name, setName] = useState('')
   const [note, setNote] = useState('')
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!name.trim()) return
+    if (!name.trim() || saving) return
     setSaving(true)
+    setError('')
     try {
       await data.addMeal({
         meal_type: mealType,
@@ -58,6 +61,8 @@ export function MealLog({ meals, saved, focus }: { meals: MealRow[]; saved: Save
       setName('')
       setNote('')
       router.refresh()
+    } catch (err) {
+      setError(isOfflineError(err) ? OFFLINE_MESSAGE : err instanceof Error && err.message ? err.message : 'Chưa ghi được bữa ăn — mẹ thử lại.')
     } finally {
       setSaving(false)
     }
@@ -101,6 +106,11 @@ export function MealLog({ meals, saved, focus }: { meals: MealRow[]; saved: Save
               {saving ? 'Đang lưu…' : 'Thêm'}
             </Button>
           </div>
+          {error && (
+            <p role="alert" className="rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">
+              {error}
+            </p>
+          )}
         </form>
       </Card>
 

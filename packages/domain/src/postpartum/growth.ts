@@ -117,7 +117,12 @@ export function percentileValue(
   return Math.round((vLo + (vHi - vLo) * f) * 10) / 10
 }
 
-/** Xếp bé vào percentile gần nhất: '<p3' | 'p3' | 'p15' | 'p50' | 'p85' | 'p97' | '>p97'. */
+/**
+ * Xếp bé vào percentile gần nhất: '<p3' | 'p3' | 'p15' | 'p50' | 'p85' | 'p97' | '>p97'.
+ * Ngưỡng NỘI SUY tuyến tính tại tháng (qua `percentileValue`) — trước đây dùng thẳng
+ * mốc anchor trên (bé 2 tháng bị so chuẩn tháng 3 → xếp thấp hơn thực tế, mâu thuẫn
+ * với `percentileValue`). Tại tháng mốc kết quả không đổi.
+ */
 export function growthPercentile(
   sex: Gender,
   measure: Measure,
@@ -125,14 +130,11 @@ export function growthPercentile(
   value: number,
 ): string {
   const m = clampMonth(month)
-  const t = table(sex, measure)
-  const lo = (ANCHOR_MONTHS.find((a) => (a as number) >= m) ?? 0) as number
-  const row = t[lo] as AnchorRow
-  if (value < (row[3] as number)) return '<p3'
-  if (value > (row[97] as number)) return '>p97'
+  if (value < percentileValue(sex, measure, m, 3)) return '<p3'
+  if (value > percentileValue(sex, measure, m, 97)) return '>p97'
   let label: string = 'p3'
   for (const p of GROWTH_PERCENTILES) {
-    if (value >= (row[p] as number)) label = 'p' + p
+    if (value >= percentileValue(sex, measure, m, p)) label = 'p' + p
   }
   return label
 }
@@ -190,6 +192,14 @@ function demo(): void {
   assert(growthPercentile('male', 'weight', 0, 3.5) === 'p50', '3.5kg trong khoảng p50')
   assert(growthPercentile('male', 'weight', 0, 2.0) === '<p3', '2.0kg → <p3')
   assert(growthPercentile('male', 'weight', 0, 5.0) === '>p97', '5.0kg → >p97')
+  // Tháng GIỮA hai mốc phải nội suy (trước đây so theo mốc trên → xếp sai thấp).
+  // Nam 2 tháng: P3 nội suy = (3.4+5.0)/2 = 4.2; P50 = (4.5+6.4)/2 = 5.45; P85 = (5.1+7.2)/2 = 6.15.
+  assert(growthPercentile('male', 'weight', 2, 4.1) === '<p3', 'nam 2 tháng 4.1kg → <p3 (nội suy 1–3m)')
+  assert(growthPercentile('male', 'weight', 2, 5.1) === 'p15', 'nam 2 tháng 5.1kg → p15 (P3/P15 nội suy = 4.2/4.8; cũ so chuẩn tháng 3 → p3, sai)')
+  assert(growthPercentile('male', 'weight', 2, 5.5) === 'p50', 'nam 2 tháng 5.5kg → p50')
+  // Khớp với percentileValue: giá trị đúng bằng ngưỡng nội suy P85 → nhãn p85.
+  const p85at2 = percentileValue('male', 'weight', 2, 85)
+  assert(p85at2 === 6.2 && growthPercentile('male', 'weight', 2, p85at2) === 'p85', 'P85 nội suy 2m = 6.2 → p85')
   assert(milestonesForStage('age_12_24m').length === 4, 'mốc 12–24m')
   console.log('✅ growth.ts OK')
 }

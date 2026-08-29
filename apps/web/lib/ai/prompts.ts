@@ -56,6 +56,16 @@ export interface ChatContextOptions {
   doctorInstructions?: string
 }
 
+/** Lược bỏ thông tin định danh (SĐT Việt Nam, email) trong văn bản tự do TRƯỚC khi
+ * đưa vào prompt AI. Defense-in-depth: notes/reason/lưu ý bác sĩ là trường free-text
+ * do người dùng tự nhập — có thể chứa SĐT/email mà khế ước cấm gửi ra prompt.
+ * Tên người khó bóc bằng regex (dễ dương tính) nên không xử lý; SĐT/email đáng tin. */
+function scrubPii(s: string): string {
+  return s
+    .replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '[email]')
+    .replace(/(?:\+84|0)(?:\d[\s.-]?){8,9}\d/g, '[SĐT]')
+}
+
 /** Dựng chuỗi ngữ cảnh cá nhân từ dữ liệu dashboard — để AI trả lời SÁT user, không chung chung. */
 export function buildChatContext(c: ChatContextInput, opts?: ChatContextOptions): string {
   const lines = [`Tuần thai: ${c.week} — ${c.trimester}.`, `Ngày dự sinh: ${c.dueDate} (còn ${c.daysLeft} ngày).`]
@@ -68,8 +78,8 @@ export function buildChatContext(c: ChatContextInput, opts?: ChatContextOptions)
   // Chỉ đưa tên tiếng Việt + lưu ý; KHÔNG đưa định danh.
   const conds = opts?.conditions?.filter((s) => s.trim().length > 0) ?? []
   if (conds.length > 0) lines.push(`Tình trạng đặc biệt đã khai báo: ${conds.join(', ')}.`)
-  const inst = opts?.doctorInstructions?.trim()
-  if (inst) lines.push(`Lưu ý bác sĩ: ${inst}.`)
+  const inst = scrubPii(opts?.doctorInstructions?.trim() ?? '')
+  if (inst) lines.push(`Lưu ý bác sĩ: ${inst.slice(0, 240)}.`)
 
   const allSyms = opts?.symptoms && opts.symptoms.length > 0 ? opts.symptoms : null
   if (allSyms) {

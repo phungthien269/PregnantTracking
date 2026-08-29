@@ -59,10 +59,12 @@ export function buildAiPrompt(
   if (deficiencies.length === 0) {
     lines.push('Các vi chất theo dõi đều đạt từ 80% nhu cầu trở lên — không có chất thiếu dai dẳng.')
   } else {
-    lines.push('Danh sách vi chất thiếu dai dẳng (đạt dưới 80% nhu cầu, kèm món gợi ý):')
+    lines.push('Danh sách vi chất thiếu dai dẳng (trung bình ngày đạt dưới 80% nhu cầu, kèm món gợi ý):')
     for (const d of deficiencies) {
+      // pct = trung bình ngày / nhu cầu ngày → diễn đạt "trung bình mỗi ngày" cho khớp.
+      const avg = d.totalDays > 0 ? Math.round((d.total / d.totalDays) * 10) / 10 : 0
       lines.push(
-        `- ${d.name}: đạt ${d.pct ?? 0}% nhu cầu (nạp ${d.total} ${d.unit} / nhu cầu ${d.need ?? 0} ${d.unit}), thiếu ${d.lowDays}/${d.totalDays} ngày. Món giàu chất này: ${d.foodSuggestions.join(', ') || 'không có dữ liệu'}.`,
+        `- ${d.name}: trung bình nạp ~${avg} ${d.unit}/ngày (nhu cầu ${d.need ?? 0} ${d.unit}/ngày), đạt ~${d.pct ?? 0}% nhu cầu, thiếu ${d.lowDays}/${d.totalDays} ngày. Món giàu chất này: ${d.foodSuggestions.join(', ') || 'không có dữ liệu'}.`,
       )
     }
   }

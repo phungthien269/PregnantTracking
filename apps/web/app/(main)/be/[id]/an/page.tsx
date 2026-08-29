@@ -1,5 +1,5 @@
 import { data } from '@/lib/data'
-import { FeedingLog, type FeedingRow } from '@/components/feeding-log'
+import { FeedingLog } from '@/components/feeding-log'
 
 export default async function ChildFeedingPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params

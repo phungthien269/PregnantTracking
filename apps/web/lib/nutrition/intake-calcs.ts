@@ -153,12 +153,16 @@ export function buildNutrientSummary(
   week: number | null,
 ): NutrientSummary {
   const trimester = week ? trimesterForWeek(week) : null
+  const dayCount = days.length
   const totals: NutrientTotal[] = NUTRIENT_IDS.map((id) => {
     const ref = getNutrientReference(id)
     const amount = round1(days.reduce((acc, d) => acc + (d.nutrients[id] ?? 0), 0))
     const need = trimester && ref ? ref.needs[trimester].value : null
     // need = 0 (năng lượng T1 "không cần tăng") → không tính %.
-    const pct = need != null && need > 0 ? Math.round((amount / need) * 100) : null
+    // pct theo TRUNG BÌNH NGÀY có nhật ký: tổng kỳ / số ngày / nhu cầu ngày.
+    // (Trước đây pct = tổng CẢ KỲ / nhu cầu ngày → kỳ 7/30/90 ngày bị thổi phồng
+    // ×số ngày, analyzeDeficiencies gần như không bao giờ flag thiếu ở kỳ dài.)
+    const pct = need != null && need > 0 && dayCount > 0 ? Math.round((amount / dayCount / need) * 100) : null
     return { id, name: ref?.name ?? id, unit: ref?.unit ?? '', amount, need, pct }
   })
   return { from, to, days, totals, week }

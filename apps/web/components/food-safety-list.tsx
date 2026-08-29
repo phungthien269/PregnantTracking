@@ -3,7 +3,6 @@ import type { Citation, FoodSafetyItem } from '@/lib/nutrition'
 import { SourceList } from '@/components/nutrition-citation'
 
 const CATEGORY_LABEL = { avoid: 'TRÁNH', limit: 'HẠN CHẾ' } as const
-const CATEGORY_TONE = { avoid: 'danger', limit: 'warning' } as const
 
 function groupCitations(items: FoodSafetyItem[]): Citation[] {
   const seen = new Set<string>()

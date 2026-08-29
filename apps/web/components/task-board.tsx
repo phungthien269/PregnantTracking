@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { data } from '@/lib/data/client-entry'
+import { isOfflineError, OFFLINE_MESSAGE } from '@/lib/api-error'
 import { TASK_STATUS_LABELS } from '@/lib/labels'
 import { fmtDate } from '@/lib/format'
 import { Badge, Button, Card, EmptyState, Field, Input } from '@mevabe/ui'
@@ -15,21 +16,34 @@ export function TaskBoard({ tasks }: { tasks: Task[] }) {
   const [title, setTitle] = useState('')
   const [due, setDue] = useState('')
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
 
   const add = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!title.trim()) return
-    await data.addTask({ title: title.trim(), due_date: due || null })
-    setTitle('')
-    setDue('')
-    router.refresh()
+    if (!title.trim() || saving) return
+    setSaving(true)
+    setError('')
+    try {
+      await data.addTask({ title: title.trim(), due_date: due || null })
+      setTitle('')
+      setDue('')
+      router.refresh()
+    } catch (err) {
+      setError(isOfflineError(err) ? OFFLINE_MESSAGE : err instanceof Error && err.message ? err.message : 'Chưa thêm được công việc — mẹ thử lại.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   const toggle = async (t: Task) => {
     setBusyId(t.id)
+    setError('')
     try {
       await data.toggleTask(t.id, !isDone(t))
       router.refresh()
+    } catch (err) {
+      setError(isOfflineError(err) ? OFFLINE_MESSAGE : err instanceof Error && err.message ? err.message : 'Chưa cập nhật được — mẹ thử lại.')
     } finally {
       setBusyId(null)
     }
@@ -48,11 +62,16 @@ export function TaskBoard({ tasks }: { tasks: Task[] }) {
             <Input id="task-due" type="date" value={due} onChange={(e) => setDue(e.target.value)} />
           </Field>
           <div className="flex items-end">
-            <Button type="submit" disabled={!title.trim()} className="w-full sm:w-auto">
-              Thêm
+            <Button type="submit" disabled={!title.trim() || saving} className="w-full sm:w-auto">
+              {saving ? 'Đang lưu…' : 'Thêm'}
             </Button>
           </div>
         </form>
+        {error && (
+          <p role="alert" className="mt-3 rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">
+            {error}
+          </p>
+        )}
       </Card>
 
       <Card title="Checklist" description="Việc cần làm của cả nhà — người phụ trách được gán khi cần.">

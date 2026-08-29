@@ -57,8 +57,10 @@ async function main(): Promise<void> {
   assert.equal((await localApi.getShopping()).some((s) => s.id === item.id), false, 'deleteShoppingItem → getShopping không thấy')
 
   // 3. getWaterCaffeine trả số liệu thật (cộng dồn sau addWater), không phải hằng số rỗng.
+  //    addWater dùng NGÀY THẬT (REAL_TODAY) — data layer lọc nước theo "hôm nay" thật.
+  const { REAL_TODAY } = await import('./mock')
   assert.equal((await localApi.getWaterCaffeine()).waterLoggedMl, 1400, 'getWaterCaffeine seed 1400ml')
-  await localApi.addWater({ logged_at: '2026-08-05T16:00:00+07:00', amount_ml: 250 })
+  await localApi.addWater({ logged_at: `${REAL_TODAY}T16:00:00+07:00`, amount_ml: 250 })
   assert.equal((await localApi.getWaterCaffeine()).waterLoggedMl, 1650, 'getWaterCaffeine cộng dồn sau addWater')
 
   // 4. Export guard (mức method): deleteFamilyData KHÔNG active user → throw

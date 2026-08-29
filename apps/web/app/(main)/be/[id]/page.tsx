@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { data } from '@/lib/data'
 import { todayStr, fmtDayMonth } from '@/lib/format'
-import { buttonClasses, Card, EmptyState, StatCard } from '@mevabe/ui'
+import { Card, EmptyState, StatCard } from '@mevabe/ui'
 import { babyAge } from '@/lib/baby-age'
 import { KnowledgeForAge } from '@/components/knowledge-for-age'
 

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { data } from '@/lib/data/client-entry'
+import { isOfflineError, OFFLINE_MESSAGE } from '@/lib/api-error'
 import { Button, Card, EmptyState } from '@mevabe/ui'
 import type { SavedMeal } from '@mevabe/domain'
 
@@ -11,14 +12,18 @@ export function MealToShopping({ meals }: { meals: SavedMeal[] }) {
   const router = useRouter()
   const [busyId, setBusyId] = useState<string | null>(null)
   const [done, setDone] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   const add = async (m: SavedMeal) => {
     setBusyId(m.id)
     setDone(null)
+    setError(null)
     try {
       const items = await data.addMealToShopping(m)
       setDone(`Đã thêm ${items.length} nguyên liệu của “${m.name}” vào mua sắm`)
       router.refresh()
+    } catch (err) {
+      setError(isOfflineError(err) ? OFFLINE_MESSAGE : err instanceof Error && err.message ? err.message : 'Chưa thêm được nguyên liệu — mẹ thử lại.')
     } finally {
       setBusyId(null)
     }
@@ -29,6 +34,11 @@ export function MealToShopping({ meals }: { meals: SavedMeal[] }) {
       {done && (
         <p className="mb-3 rounded-md bg-success/15 px-3 py-2 text-xs text-success" role="status">
           {done}
+        </p>
+      )}
+      {error && (
+        <p role="alert" className="mb-3 rounded-md bg-danger/10 px-3 py-2 text-xs text-danger">
+          {error}
         </p>
       )}
       {meals.length ? (

@@ -9,6 +9,10 @@
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions'
 
+/** Thời gian chờ tối đa cho 1 lần gọi OpenRouter (ms). Tránh request treo vô hạn khi
+ * provider không phản hồi — server route handler không tự hết hạn ở mọi môi trường. */
+const AI_TIMEOUT_MS = 60_000
+
 /** Model allowlist — ổn định cho tiếng Việt + JSON.
  * default + vision = google/gemma-4-26b-a4b-it:free (free, đọc ảnh + text, không
  * suy luận → trả nội dung ổn định; đã test chạy với key). Tránh model dạng
@@ -114,10 +118,12 @@ function isJsonFormatRejected(status: number, detail: string): boolean {
 /** POST chung tới OpenRouter — chatCompletion và visionCompletion dùng chung.
  * retryNoJson=true: nếu provider từ chối response_format (json:true) thì thử lại
  * 1 lần KHÔNG có response_format — fix cho mọi caller json (quiz, OCR, meal-photo…). */
-async function postOpenRouter(body: Record<string, unknown>, retryNoJson = false): Promise<AiReply> {
+async function postOpenRouter(body: Record<string, unknown>, retryNoJson = false, stripFences = false): Promise<AiReply> {
   const key = apiKey()
   if (!key) throw new Error('NO_API_KEY — chưa cấu hình OPENROUTER_API_KEY')
 
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), AI_TIMEOUT_MS)
   let res: Response
   try {
     res = await fetch(OPENROUTER_URL, {
@@ -129,16 +135,21 @@ async function postOpenRouter(body: Record<string, unknown>, retryNoJson = false
         'X-Title': 'MeVaBe', // ASCII — header value non-ASCII khiến fetch() ném TypeError
       },
       body: JSON.stringify(body),
+      signal: controller.signal,
     })
-  } catch {
+  } catch (e) {
+    if ((e as Error)?.name === 'AbortError') throw new Error('OPENROUTER_TIMEOUT — hết thời gian chờ OpenRouter')
     throw new Error('OPENROUTER_NETWORK — không kết nối được OpenRouter')
+  } finally {
+    clearTimeout(timer)
   }
 
   if (!res.ok) {
     const detail = await res.text().catch(() => '')
     if (retryNoJson && body.response_format && isJsonFormatRejected(res.status, detail)) {
       const { response_format: _omit, ...bodyNoJson } = body
-      return postOpenRouter(bodyNoJson, false)
+      // Thử lại KHÔNG response_format; vẫn bóc code fence vì model (VD Gemma) hay bọc JSON trong ```json.
+      return postOpenRouter(bodyNoJson, false, true)
     }
     throw new Error(`OPENROUTER_${res.status} — ${detail.slice(0, 160)}`)
   }
@@ -150,8 +161,9 @@ async function postOpenRouter(body: Record<string, unknown>, retryNoJson = false
   const raw = payload.choices?.[0]?.message?.content?.trim()
   if (!raw) throw new Error('OPENROUTER_EMPTY — phản hồi rỗng')
   // Khi yêu cầu JSON: nhiều model (VD Gemma) trả kèm khung ```json …``` — bóc ra
-  // để caller JSON.parse được trực tiếp.
-  const content = retryNoJson ? stripCodeFences(raw) : raw
+  // để caller JSON.parse được trực tiếp. Áp dụng cả ở lần retry (không response_format)
+  // vì model vẫn có thể bọc JSON trong code fence.
+  const content = stripFences ? stripCodeFences(raw) : raw
   const used = payload.model ?? String(body.model)
   return { content, model: used, provider: providerOf(used) }
 }
@@ -170,7 +182,7 @@ export async function chatCompletion(req: AiRequest): Promise<AiReply> {
   }
   if (req.json) body.response_format = { type: 'json_object' }
   if (req.maxTokens) body.max_tokens = req.maxTokens
-  return postOpenRouter(body, Boolean(req.json))
+  return postOpenRouter(body, Boolean(req.json), Boolean(req.json))
 }
 
 /** Gửi ảnh (data URL) kèm text cho model vision — AI nhìn PIXEL ảnh, không chỉ tên file. */
@@ -182,5 +194,5 @@ export async function visionCompletion(req: AiVisionRequest): Promise<AiReply> {
   }
   if (req.json) body.response_format = { type: 'json_object' }
   if (req.maxTokens) body.max_tokens = req.maxTokens
-  return postOpenRouter(body, Boolean(req.json))
+  return postOpenRouter(body, Boolean(req.json), Boolean(req.json))
 }

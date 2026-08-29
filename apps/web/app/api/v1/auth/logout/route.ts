@@ -1,5 +1,5 @@
 import { apiOk } from '@/lib/api-utils'
-import { dbFindSession, dbDeleteSession } from '@/lib/db/local'
+import { dbDeleteSession } from '@/lib/db/local'
 
 // POST /api/v1/auth/logout — xoá session server-side (best-effort).
 export async function POST(req: Request): Promise<Response> {

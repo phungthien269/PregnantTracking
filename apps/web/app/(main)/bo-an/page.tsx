@@ -1,7 +1,7 @@
 import { data } from '@/lib/data'
 import { todayStr } from '@/lib/format'
 import { PageHeader } from '@/components/page-header'
-import { MealLog, type MealRow, type SavedMealRow } from '@/components/meal-log'
+import { MealLog } from '@/components/meal-log'
 import { MealPhotoUpload } from '@/components/MealPhotoUpload'
 import { MealToShopping } from '@/components/meal-to-shopping'
 import { SectionTabs, DINH_DUONG_TABS } from '@/components/section-tabs'

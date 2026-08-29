@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { data } from '@/lib/data/client-entry'
+import { isOfflineError, OFFLINE_MESSAGE } from '@/lib/api-error'
 import { FEEDING_METHOD_LABELS, FEEDING_METHOD_OPTIONS } from '@/lib/labels'
 import { fmtDateTime } from '@/lib/format'
 import { Badge, Button, Card, EmptyState, Field, Input, Select } from '@mevabe/ui'
@@ -24,10 +25,12 @@ export function FeedingLog({ logs, childId }: { logs: FeedingRow[]; childId: str
   const [amount, setAmount] = useState('')
   const [startedAt, setStartedAt] = useState('')
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSaving(true)
+    setError('')
     try {
       await data.addFeeding(childId, {
         method,
@@ -37,6 +40,8 @@ export function FeedingLog({ logs, childId }: { logs: FeedingRow[]; childId: str
       setAmount('')
       setStartedAt('')
       router.refresh()
+    } catch (err) {
+      setError(isOfflineError(err) ? OFFLINE_MESSAGE : err instanceof Error && err.message ? err.message : 'Không lưu được cữ bú — mẹ thử lại.')
     } finally {
       setSaving(false)
     }
@@ -61,6 +66,11 @@ export function FeedingLog({ logs, childId }: { logs: FeedingRow[]; childId: str
           <Field label="Thời điểm" htmlFor="feed-at">
             <Input id="feed-at" type="datetime-local" value={startedAt} onChange={(e) => setStartedAt(e.target.value)} />
           </Field>
+          {error && (
+            <p role="alert" className="rounded-md bg-danger/10 px-3 py-2 text-sm text-danger sm:col-span-3">
+              {error}
+            </p>
+          )}
           <div className="sm:col-span-3 sm:justify-self-end">
             <Button type="submit" disabled={saving} className="w-full sm:w-auto">
               {saving ? 'Đang lưu…' : 'Thêm'}

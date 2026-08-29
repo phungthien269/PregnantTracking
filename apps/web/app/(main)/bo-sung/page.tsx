@@ -8,13 +8,6 @@ import { SupplementTable } from '@/components/supplement-table'
 import { SectionTabs, DINH_DUONG_TABS } from '@/components/section-tabs'
 import { TrimesterSupplementPlan } from '@/components/trimester-supplement-plan'
 
-interface SupplementRow {
-  id: string
-  name: string
-  status: SupplementStatus
-  notes?: string | null
-}
-
 const statusTone = (s: SupplementStatus) =>
   s === 'taken' ? ('success' as const) : s === 'skipped' ? ('neutral' as const) : s === 'confirmed' ? ('primary' as const) : ('warning' as const)
 

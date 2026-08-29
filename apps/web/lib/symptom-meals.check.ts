@@ -13,7 +13,7 @@ import {
   suggestMeals,
   trimesterOfWeek,
 } from './symptom-meals'
-import { MEALS, getMeal } from './nutrition/meals-data'
+import { getMeal } from './nutrition/meals-data'
 
 const assert = (cond: unknown, msg: string): void => {
   if (!cond) throw new Error(`❌ ${msg}`)

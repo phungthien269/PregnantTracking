@@ -1,4 +1,4 @@
-import { growthPercentile, percentileValue } from '@mevabe/domain'
+import { growthPercentile } from '@mevabe/domain'
 import { buildGrowthView, percentileOf, referenceAt } from './growth-percentile'
 
 // ===========================================================================

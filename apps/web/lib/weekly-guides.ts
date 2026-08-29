@@ -413,17 +413,6 @@ export interface WeekGuide {
   warningSources: Citation[]
 }
 
-function uniqueByUrl(cs: Citation[]): Citation[] {
-  const seen = new Set<string>()
-  const out: Citation[] = []
-  for (const c of cs) {
-    if (!c.url || seen.has(c.url)) continue
-    seen.add(c.url)
-    out.push(c)
-  }
-  return out
-}
-
 /**
  * Hướng dẫn đầy đủ cho một tuần (1–42). Tuần ngoài 1–42 → null.
  * Tuần 41–42 (quá ngày dự sinh) dùng trọng tâm dinh dưỡng của tuần 40.

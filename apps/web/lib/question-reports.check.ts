@@ -23,8 +23,8 @@ async function main(): Promise<void> {
 
   console.log('1. create — gửi báo lỗi câu hỏi')
   const r1 = await questionReportStore.create({ quiz_question_id: Q1, reason: 'Sai đáp án', details: 'Đáp án đúng phải là 1000 mg' })
-  const r2 = await questionReportStore.create({ quiz_question_id: Q1, reason: 'Nội dung không chính xác' })
-  const r3 = await questionReportStore.create({ quiz_question_id: Q2, reason: 'Lỗi chính tả' })
+  await questionReportStore.create({ quiz_question_id: Q1, reason: 'Nội dung không chính xác' })
+  await questionReportStore.create({ quiz_question_id: Q2, reason: 'Lỗi chính tả' })
   assert(r1.status === 'open', 'report mới có status open')
   assert(r1.reason.includes('Sai đáp án') && r1.reason.includes('1000 mg'), 'reason gộp cả chi tiết')
   assert(r1.quiz_question_id === Q1, 'gắn đúng quiz_question_id')

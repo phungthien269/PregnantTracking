@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { data, type MeasurementInput } from '@/lib/data/client-entry'
+import { isOfflineError, OFFLINE_MESSAGE } from '@/lib/api-error'
 import { MEASUREMENT_LABELS, MEASUREMENT_OPTIONS, MEASUREMENT_UNITS } from '@/lib/labels'
 import { fmtDayMonth, fmtDateTime } from '@/lib/format'
 import { Button, Card, EmptyState, Field, Input, Tabs, TabsContent, TabsList, TabsTrigger } from '@mevabe/ui'
@@ -26,6 +27,7 @@ export function MeasurementLog({ measurements }: { measurements: MeasurementRow[
   const [note, setNote] = useState('')
   const [takenAt, setTakenAt] = useState('')
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
 
   const types = useMemo(() => {
     const present = measurements.map((m) => m.type)
@@ -43,7 +45,7 @@ export function MeasurementLog({ measurements }: { measurements: MeasurementRow[
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     const v = Number(value)
-    if (!Number.isFinite(v)) return
+    if (!Number.isFinite(v) || saving) return
     const input: MeasurementInput = {
       type,
       value: v,
@@ -52,12 +54,15 @@ export function MeasurementLog({ measurements }: { measurements: MeasurementRow[
       note: note.trim() || undefined,
     }
     setSaving(true)
+    setError('')
     try {
       await data.addMeasurement(input)
       setValue('')
       setNote('')
       setTakenAt('')
       router.refresh()
+    } catch (err) {
+      setError(isOfflineError(err) ? OFFLINE_MESSAGE : err instanceof Error && err.message ? err.message : 'Chưa ghi được lần đo — mẹ thử lại.')
     } finally {
       setSaving(false)
     }
@@ -96,6 +101,11 @@ export function MeasurementLog({ measurements }: { measurements: MeasurementRow[
             </Button>
           </div>
         </form>
+        {error && (
+          <p role="alert" className="mt-3 rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">
+            {error}
+          </p>
+        )}
       </Card>
 
       <Card title="Nhật ký đo lường">

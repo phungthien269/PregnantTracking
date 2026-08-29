@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { data, type WaterCaffeine } from '@/lib/data/client-entry'
+import { isOfflineError, OFFLINE_MESSAGE } from '@/lib/api-error'
 import { Button, Card, ProgressRing } from '@mevabe/ui'
 
 const LY_ML = 200
@@ -12,12 +13,20 @@ const CAFFE_TEA_MG = 30
 export function WaterLog({ initial }: { initial: WaterCaffeine }) {
   const [logged, setLogged] = useState(initial.waterLoggedMl)
   const [caff, setCaff] = useState(initial.caffeineLoggedMg)
+  const [error, setError] = useState('')
   const pct = initial.waterGoalMl > 0 ? (logged / initial.waterGoalMl) * 100 : 0
   const caffPct = initial.caffeineLimitMg > 0 ? Math.min(100, (caff / initial.caffeineLimitMg) * 100) : 0
 
-  const addWater = (amountMl: number) => {
+  // Optimistic: tăng ngay cho mượt; nếu lưu thất bại (offline 503…) → rollback + báo rõ.
+  const addWater = async (amountMl: number) => {
     setLogged((l) => l + amountMl)
-    void data.addWater({ logged_at: new Date().toISOString(), amount_ml: amountMl })
+    setError('')
+    try {
+      await data.addWater({ logged_at: new Date().toISOString(), amount_ml: amountMl })
+    } catch (err) {
+      setLogged((l) => Math.max(0, l - amountMl))
+      setError(isOfflineError(err) ? OFFLINE_MESSAGE : 'Chưa ghi được lượng nước — mẹ thử lại.')
+    }
   }
 
   return (
@@ -39,6 +48,11 @@ export function WaterLog({ initial }: { initial: WaterCaffeine }) {
             </div>
           </div>
         </div>
+        {error && (
+          <p role="alert" className="mt-3 rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">
+            {error}
+          </p>
+        )}
         <p className="mt-3 text-xs text-muted">Mỗi lần bấm sẽ ghi vào nhật ký nước trong ngày.</p>
       </Card>
 

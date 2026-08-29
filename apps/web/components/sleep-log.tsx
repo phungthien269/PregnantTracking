@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { data } from '@/lib/data/client-entry'
+import { isOfflineError, OFFLINE_MESSAGE } from '@/lib/api-error'
 import { SLEEP_PLACE_LABELS, SLEEP_PLACE_OPTIONS } from '@/lib/labels'
 import { fmtDateTime } from '@/lib/format'
 import { Badge, Button, Card, EmptyState, Field, Input, Select } from '@mevabe/ui'
@@ -22,10 +23,12 @@ export function SleepLog({ logs, childId }: { logs: SleepRow[]; childId: string 
   const [startedAt, setStartedAt] = useState('')
   const [endedAt, setEndedAt] = useState('')
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSaving(true)
+    setError('')
     try {
       await data.addSleep(childId, {
         place,
@@ -35,6 +38,8 @@ export function SleepLog({ logs, childId }: { logs: SleepRow[]; childId: string 
       setStartedAt('')
       setEndedAt('')
       router.refresh()
+    } catch (err) {
+      setError(isOfflineError(err) ? OFFLINE_MESSAGE : err instanceof Error && err.message ? err.message : 'Không lưu được giấc ngủ — thử lại.')
     } finally {
       setSaving(false)
     }
@@ -59,6 +64,11 @@ export function SleepLog({ logs, childId }: { logs: SleepRow[]; childId: string 
           <Field label="Kết thúc" htmlFor="sleep-end">
             <Input id="sleep-end" type="datetime-local" value={endedAt} onChange={(e) => setEndedAt(e.target.value)} />
           </Field>
+          {error && (
+            <p role="alert" className="rounded-md bg-danger/10 px-3 py-2 text-sm text-danger sm:col-span-3">
+              {error}
+            </p>
+          )}
           <div className="sm:col-span-3 sm:justify-self-end">
             <Button type="submit" disabled={saving} className="w-full sm:w-auto">
               {saving ? 'Đang lưu…' : 'Thêm'}

@@ -59,22 +59,16 @@ import {
   deleteRows,
   listRows,
   findRow,
-  sumColumn,
   dbMembersForFamily,
   dbUserById,
   dbFamilyById,
 } from '../db/local'
 import {
   FAMILY_ID,
-  MOM_ID,
-  DAD_ID,
   PREG_ID,
   HEALTH_ID,
-  CHILD_ID,
   WEEKS,
-  TODAY,
   REAL_TODAY,
-  DEMO_NOW,
   CURRENT_WEEK,
   EDD,
   DAYS_LEFT,
@@ -113,13 +107,29 @@ function myOwnerId(): string | null {
   return getActiveUser()?.user_id ?? null
 }
 
-/** Pregnancy id của active family (fallback PREG_ID demo) — để row mới gắn đúng thai kỳ. */
+/** Pregnancy id của active family (fallback PREG_ID demo) — để row mới gắn đúng thai kỳ.
+ * Ưu tiên thai kỳ ongoing thuộc family hiện tại; nếu không có (vd sau sinh) fallback
+ * PREG_ID seed demo + log cảnh báo để trace (mutation mới sẽ gắn vào thai kỳ demo). */
 function currentPregnancyId(): string {
-  const s = scope()
   const au = getActiveUser()
   const opts = au?.family_id ? { familyId: au.family_id } : {}
   const preg = listRows<D.Pregnancy>('pregnancies', opts).find((p) => p.status === 'ongoing')
-  return preg?.id ?? PREG_ID
+  if (!preg) {
+    console.warn(
+      '[local] currentPregnancyId: không có thai kỳ ongoing cho family hiện tại — fallback PREG_ID demo (mutation mới gắn vào thai kỳ demo).',
+    )
+    return PREG_ID
+  }
+  return preg.id
+}
+
+/** Tổng nước đã uống HÔM NAY (lọc theo logged_at prefix REAL_TODAY) — tránh phình theo
+ * toàn lịch sử khi SQLite bền vững. Bám mock.ts: seed 1400 = "hôm nay". */
+function waterToday(): number {
+  return listRows<D.HydrationLog>('hydration_logs', { ...scope(), prefix: { logged_at: REAL_TODAY } }).reduce(
+    (sum, l) => sum + (l.amount_ml ?? 0),
+    0,
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -145,8 +155,10 @@ const localImpl = {
     const s = scope()
     const au = getActiveUser()
     const opts = au?.family_id ? { familyId: au.family_id } : {}
+    // "Sắp tới" lọc theo thời điểm thật (giờ VN) — không đứng yên theo DEMO_NOW cố định.
+    const nowIso = new Date().toISOString()
     const upcoming = listRows<D.Appointment>('appointments', s)
-      .filter((a) => a.scheduled_at > DEMO_NOW)
+      .filter((a) => a.scheduled_at > nowIso)
       .slice(0, 2)
     const measurements = listRows<D.MaternalMeasurement>('maternal_measurements', s)
     const latestWeights = measurements.filter((m) => m.type === 'weight').slice(-2)
@@ -155,7 +167,8 @@ const localImpl = {
     const preg = listRows<D.Pregnancy>('pregnancies', opts).find((p) => p.status === 'ongoing')
     const week = preg?.lmp ? weekFromLmp(preg.lmp) : CURRENT_WEEK
     const dueDate = preg?.edd ?? EDD
-    const daysLeft = preg?.edd ? Math.round((Date.parse(preg.edd) - Date.parse(TODAY)) / DAY_MS) : DAYS_LEFT
+    // daysLeft theo ngày thật (REAL_TODAY, giờ VN) — bộ đếm tự trôi, không đứng yên theo TODAY.
+    const daysLeft = preg?.edd ? Math.round((Date.parse(preg.edd) - Date.parse(REAL_TODAY)) / DAY_MS) : DAYS_LEFT
     const tasks = listRows<D.Task>('tasks', s)
     const meals = listRows<D.MealEntry>('meal_entries', s)
     return {
@@ -166,7 +179,7 @@ const localImpl = {
       taskCount: tasks.length,
       tasksDone: tasks.filter((t) => t.status === 'done').length,
       mealCountToday: meals.filter((m) => m.logged_at.startsWith(REAL_TODAY)).length,
-      waterLoggedMl: sumColumn('hydration_logs', 'amount_ml', s),
+      waterLoggedMl: waterToday(),
       waterGoalMl: 2000,
       upcomingAppointments: upcoming,
       latestMeasurements: [...latestWeights, ...latestBp],
@@ -252,7 +265,7 @@ const localImpl = {
   async getWaterCaffeine(): Promise<WaterCaffeine> {
     return {
       waterGoalMl: 2000,
-      waterLoggedMl: sumColumn('hydration_logs', 'amount_ml', scope()),
+      waterLoggedMl: waterToday(),
       caffeineLimitMg: 200,
       caffeineLoggedMg: 0,
     }
@@ -267,28 +280,31 @@ const localImpl = {
   },
 
   async getNutritionProfile(): Promise<D.NutritionProfile | null> {
-    return listRows<D.NutritionProfile>('nutrition_profiles', scope()).find((n) => n.pregnancy_id === PREG_ID) ?? null
+    return listRows<D.NutritionProfile>('nutrition_profiles', scope()).find((n) => n.pregnancy_id === currentPregnancyId()) ?? null
   },
 
   async updateNutritionProfile(input: NutritionProfileInput): Promise<D.NutritionProfile> {
     const now = new Date().toISOString()
-    let np = listRows<D.NutritionProfile>('nutrition_profiles', scope()).find((n) => n.pregnancy_id === PREG_ID)
+    const pregId = currentPregnancyId()
+    let np = listRows<D.NutritionProfile>('nutrition_profiles', scope()).find((n) => n.pregnancy_id === pregId)
     if (!np) {
+      // Tạo hồ sơ mới — áp ngay input.conditions/doctor_instructions (fix: trước đây tạo
+      // rỗng rồi return, bỏ qua input → lần đầu khai báo tình trạng đặc biệt không lưu).
       np = {
         id: uid(),
         family_id: myFamilyId(),
         private_owner_id: null,
         created_at: now,
         updated_at: now,
-        pregnancy_id: currentPregnancyId(),
+        pregnancy_id: pregId,
         dietary_pattern: 'omnivore',
         allergies: [],
         dislikes: [],
         budget_per_week: null,
         cook_time_min: null,
         pre_pregnancy_weight_kg: null,
-        conditions: [],
-        doctor_instructions: null,
+        conditions: input.conditions ?? [],
+        doctor_instructions: input.doctor_instructions ?? null,
       }
       insertRow('nutrition_profiles', np as unknown as Record<string, unknown>)
       return np
@@ -1267,11 +1283,12 @@ const localImpl = {
   async deleteFamilyData(): Promise<void> {
     // Guard: xoá dữ liệu gia đình phải có active user (route /api/v1/export trả
     // 401 khi chưa đăng nhập — bản sao phòng thủ ở method cho mọi caller khác).
-    if (!getActiveUser()) throw new Error('Cần đăng nhập để xoá dữ liệu gia đình')
+    const au = getActiveUser()
+    if (!au) throw new Error('Cần đăng nhập để xoá dữ liệu gia đình')
     // Xoá dữ liệu người dùng tạo (KHÔNG reset seed — giữ pregnancies + content để
     // UI không vỡ, đúng ngữ nghĩa mock Phase 3). children/birth_records giờ là dữ
     // liệu người dùng (mutation Phase 7) → xoá theo.
-    const fam = scope().familyId
+    const fam = au.family_id || undefined
     const tables = [
       'birth_records',
       'children',
@@ -1305,7 +1322,17 @@ const localImpl = {
       'medical_visits',
       'visit_documents',
     ]
-    for (const t of tables) deleteRows(t, fam ? { familyId: fam } : {})
+    // KHÔNG bao giờ deleteRows không điều kiện — family_id rỗng (user đăng ký chưa
+    // join family) sẽ xoá sạch toàn bảng mọi family. Chỉ xoá khi CÓ familyId để lọc;
+    // không có family → bỏ qua toàn bộ + log cảnh báo (DeleteOpts không lọc theo
+    // owner, và đa số bảng family-scoped không có cột private_owner_id).
+    for (const t of tables) {
+      if (fam) {
+        deleteRows(t, { familyId: fam })
+      } else {
+        console.warn(`[local] deleteFamilyData: bỏ qua bảng ${t} — không có familyId để lọc (tránh xoá sạch).`)
+      }
+    }
   },
 }
 

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { data } from '@/lib/data/client-entry'
+import { isOfflineError, OFFLINE_MESSAGE } from '@/lib/api-error'
 import { MOVEMENT_LABELS, MOVEMENT_OPTIONS } from '@/lib/labels'
 import { fmtDateTime } from '@/lib/format'
 import { Badge, Button, Card, EmptyState, Field, Select, Textarea } from '@mevabe/ui'
@@ -24,6 +25,7 @@ export function FetalLog({ logs }: { logs: LogRow[] }) {
   const [feeling, setFeeling] = useState<FetalMovementFeeling>('normal')
   const [note, setNote] = useState('')
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
   // Đa thai: tự nạp danh sách thai (client → /api/v1/fetuses). >1 thai → hiện bộ chọn.
   const [fetuses, setFetuses] = useState<Fetus[]>([])
   // '' = Tất cả; khác '' = key thai ('A'/'B'/'C').
@@ -58,12 +60,16 @@ export function FetalLog({ logs }: { logs: LogRow[] }) {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (saving) return
     setSaving(true)
+    setError('')
     try {
       const tagged = tagFetusNote(fetusKeySel, note)
       await data.addFetalMovement({ felt_at: new Date().toISOString(), feeling, note: tagged || undefined })
       setNote('')
       router.refresh()
+    } catch (err) {
+      setError(isOfflineError(err) ? OFFLINE_MESSAGE : err instanceof Error && err.message ? err.message : 'Chưa ghi được thai máy — mẹ thử lại.')
     } finally {
       setSaving(false)
     }
@@ -113,6 +119,11 @@ export function FetalLog({ logs }: { logs: LogRow[] }) {
               {saving ? 'Đang lưu…' : 'Thêm'}
             </Button>
           </div>
+          {error && (
+            <p role="alert" className="rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">
+              {error}
+            </p>
+          )}
         </form>
       </Card>
 

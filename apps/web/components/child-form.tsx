@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { data } from '@/lib/data/client-entry'
+import { isOfflineError, OFFLINE_MESSAGE } from '@/lib/api-error'
 import { Button, Field, Input, Select } from '@mevabe/ui'
 import type { Gender } from '@mevabe/domain'
 
@@ -24,6 +25,7 @@ export function ChildForm({ birthId }: { birthId?: string | null }) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
 
   const [name, setName] = useState('')
   const [sex, setSex] = useState<Gender>('female')
@@ -36,7 +38,9 @@ export function ChildForm({ birthId }: { birthId?: string | null }) {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (saving) return
     setSaving(true)
+    setError('')
     try {
       await data.addChild({
         birth_record_id: birthId ?? undefined,
@@ -59,6 +63,8 @@ export function ChildForm({ birthId }: { birthId?: string | null }) {
       setAllergies('')
       setOpen(false)
       router.refresh()
+    } catch (err) {
+      setError(isOfflineError(err) ? OFFLINE_MESSAGE : err instanceof Error && err.message ? err.message : 'Chưa thêm được hồ sơ bé — mẹ thử lại.')
     } finally {
       setSaving(false)
     }
@@ -106,6 +112,11 @@ export function ChildForm({ birthId }: { birthId?: string | null }) {
               {saving ? 'Đang lưu…' : 'Thêm bé'}
             </Button>
           </div>
+          {error && (
+            <p role="alert" className="sm:col-span-2 rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">
+              {error}
+            </p>
+          )}
         </form>
       ) : (
         <Button variant="secondary" size="sm" onClick={() => setOpen(true)}>

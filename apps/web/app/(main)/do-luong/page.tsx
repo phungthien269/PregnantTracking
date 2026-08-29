@@ -1,6 +1,6 @@
 import { data } from '@/lib/data'
 import { PageHeader } from '@/components/page-header'
-import { MeasurementLog, type MeasurementRow } from '@/components/measurement-log'
+import { MeasurementLog } from '@/components/measurement-log'
 import { SectionTabs, THAI_KY_TABS } from '@/components/section-tabs'
 
 export default async function DoLuongPage() {

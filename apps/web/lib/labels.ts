@@ -1,6 +1,5 @@
 // Nhãn tiếng Việt cho enum domain (core.ts đã có, schema entity do Agent 2 thêm).
 import {
-  BIRTH_TYPES,
   MEAL_TYPES,
   MEASUREMENT_TYPES,
   SYMPTOM_SEVERITIES,
@@ -9,11 +8,6 @@ import {
   DIAPER_TYPES,
   FEEDING_METHODS,
   SLEEP_PLACES,
-  MILESTONE_STATUSES,
-  TRIMESTERS,
-  TASK_STATUSES,
-  SHOPPING_STATUSES,
-  SUPPLEMENT_STATUSES,
   CONDITION_TYPES,
   REMINDER_FREQUENCIES,
 } from '@mevabe/domain'

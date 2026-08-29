@@ -159,11 +159,11 @@ export function CaiDatClient() {
 
       <Card title="Quyền riêng tư">
         <p className="text-sm text-muted">
-          Mục đánh dấu <strong className="text-fg">"Chỉ mình tôi"</strong> (như triệu chứng, thai máy,
+          Mục đánh dấu <strong className="text-fg">&ldquo;Chỉ mình tôi&rdquo;</strong> (như triệu chứng, thai máy,
           tài liệu) chỉ người tạo xem được; thành viên khác trong gia đình không thấy. Mục dùng chung
           thì mọi thành viên đều thấy.
         </p>
-        <p className="mt-2 text-xs text-muted">Chọn "Chỉ mình tôi" ngay trên từng biểu mẫu khi ghi dữ liệu.</p>
+        <p className="mt-2 text-xs text-muted">Chọn &ldquo;Chỉ mình tôi&rdquo; ngay trên từng biểu mẫu khi ghi dữ liệu.</p>
       </Card>
 
       <Card title="Trợ lý AI" description="Hỏi AI dùng nội dung trong thư viện của bạn.">

@@ -1,6 +1,6 @@
 import { data } from '@/lib/data'
 import { PageHeader } from '@/components/page-header'
-import { SymptomLog, type SymptomRow } from '@/components/symptom-log'
+import { SymptomLog } from '@/components/symptom-log'
 import { SymptomMealSuggestions } from '@/components/symptom-meal-suggestions'
 import { weekFromLmp } from '@/lib/pregnancy-math'
 import { SectionTabs, THAI_KY_TABS, SUC_KHOE_TABS } from '@/components/section-tabs'

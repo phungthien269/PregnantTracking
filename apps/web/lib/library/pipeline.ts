@@ -5,7 +5,7 @@
 // ===========================================================================
 
 import type { KnowledgeStage } from '@mevabe/domain'
-import { extractDocument, type ExtractInput, type ImportKind } from './extract'
+import { extractDocument, type ImportKind } from './extract'
 import { chunkText, type Chunk } from './chunk'
 import { libraryStore } from './store'
 import { guessStage } from './stage'

@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { KNOWLEDGE_STAGES } from '@mevabe/domain'
-import { apiOk, apiError, parseBody } from '@/lib/api-utils'
+import { apiOk, parseBody } from '@/lib/api-utils'
 import { chatCompletion, aiConfigured, AI_MODELS, providerOf } from '@/lib/ai/client'
 import { chatSystemPrompt, buildChatContext, type MedicalVisitContext } from '@/lib/ai/prompts'
 import { sourceReply } from '@/lib/ai/sources'

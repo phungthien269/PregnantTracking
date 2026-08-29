@@ -86,8 +86,7 @@ function pdfObjects(buf: Buffer): PdfObject[] {
   if (s.includes('/Encrypt')) throw new Error('PDF có mã hóa — chưa hỗ trợ')
   const objRe = /(\d+)\s+(\d+)\s+obj/g
   const matches: number[] = []
-  let m: RegExpExecArray | null
-  while ((m = objRe.exec(s))) matches.push(objRe.lastIndex)
+  while (objRe.exec(s)) matches.push(objRe.lastIndex)
   const out: PdfObject[] = []
   for (let k = 0; k < matches.length; k++) {
     const start = matches[k]!

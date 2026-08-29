@@ -110,7 +110,7 @@ export default async function ChildVaccinationPage({ params }: { params: Promise
             {renderList(upcoming as VaccinationRow[], 'Không có mũi sắp tới')}
             {upcoming.some((v) => v.scheduled_date < today) && (
               <p className="mt-3 text-xs text-danger">
-                Mũi đánh dấu "Quá hạn" đã qua ngày hẹn mà chưa tiêm — nên đặt lịch sớm với trạm y tế / bác sĩ.
+                Mũi đánh dấu &ldquo;Quá hạn&rdquo; đã qua ngày hẹn mà chưa tiêm — nên đặt lịch sớm với trạm y tế / bác sĩ.
               </p>
             )}
           </>

@@ -71,7 +71,7 @@ import {
   knowledgeSources,
   medicalVisits,
   visitDocuments,
-  TODAY,
+  REAL_TODAY,
 } from '../data/mock'
 
 // ---------------------------------------------------------------------------
@@ -197,7 +197,7 @@ function initSchema(db: DatabaseSync): void {
 // Seed — dùng lại mảng seed mock.ts (cùng hành vi, cùng nội dung tiếng Việt)
 // ---------------------------------------------------------------------------
 
-function seedIfEmpty(db: DatabaseSync): void {
+function seedIfEmpty(_db: DatabaseSync): void {
   if (countRows('pregnancies') > 0) return
   const now = new Date().toISOString()
   for (const p of pregnancies) insertRow('pregnancies', p as unknown as Row)
@@ -248,13 +248,15 @@ function seedIfEmpty(db: DatabaseSync): void {
   for (const v of medicalVisits) insertRow('medical_visits', v as unknown as Row)
   for (const d of visitDocuments) insertRow('visit_documents', d as unknown as Row)
   // Nước: mock khởi đầu waterLoggedMl = 1400 → 1 dòng hydration seed tổng 1400.
+  // logged_at theo NGÀY THẬT (REAL_TODAY) để tính "hôm nay" đúng sau khi data layer
+  // lọc nước theo ngày thật (seed theo TODAY cố định sẽ không còn tính là hôm nay).
   insertRow('hydration_logs', {
     id: 'seed-water-1400',
     family_id: FAMILY_ID,
     private_owner_id: null,
-    created_at: `${TODAY}T00:00:00+07:00`,
-    updated_at: `${TODAY}T00:00:00+07:00`,
-    logged_at: `${TODAY}T00:00:00+07:00`,
+    created_at: `${REAL_TODAY}T00:00:00+07:00`,
+    updated_at: `${REAL_TODAY}T00:00:00+07:00`,
+    logged_at: `${REAL_TODAY}T00:00:00+07:00`,
     amount_ml: 1400,
     source: 'seed',
   })
@@ -550,7 +552,6 @@ function generateFamilyCodeLocal(): string {
 
 export function __selfcheck(): string[] {
   const errors: string[] = []
-  const db = getDb()
   if (countRows('pregnancies') < 1) errors.push('seed pregnancies trống')
   if (countRows('maternal_measurements') < 10) errors.push('seed measurements < 10')
   if (countRows('meal_entries') < 5) errors.push('seed meals < 5')

@@ -5,7 +5,7 @@
 // Chạy: scripts/test-web.sh.
 // ===========================================================================
 
-import { hcmParts, isDueToday, isAppointmentToday, isTaskDueToday, weekNow, newWeekStarted, type Parts } from './notification-due'
+import { hcmParts, isDueToday, isAppointmentToday, isTaskDueToday, weekNow, newWeekStarted } from './notification-due'
 
 const assert = (cond: unknown, msg: string): void => {
   if (!cond) throw new Error(`❌ ${msg}`)
