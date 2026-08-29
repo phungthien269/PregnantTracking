@@ -8,6 +8,7 @@ import { useSession } from '@/lib/auth/session-context'
 import { BOTTOM_NAV, MAIN_NAV } from './nav'
 import { ThemeToggle } from './theme-toggle'
 import { AskAiFab } from './ask-ai-fab'
+import { NavProgress } from './nav-progress'
 
 function isActive(pathname: string, href: string): boolean {
   return pathname === href || (href !== '/' && pathname.startsWith(href))
@@ -144,6 +145,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </nav>
 
       <AskAiFab />
+      <NavProgress />
     </div>
   )
 }

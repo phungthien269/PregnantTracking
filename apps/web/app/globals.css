@@ -46,6 +46,22 @@ html {
   animation: page-enter 180ms ease-out;
 }
 
+/* R7 — thanh tiến trình điều hướng: trượt lặp 900ms; reduced-motion → thanh tĩnh mờ. */
+@keyframes nav-progress-slide {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(400%);
+  }
+}
+
+.nav-progress-bar {
+  width: 25%;
+  background: linear-gradient(90deg, transparent, var(--mv-primary), transparent);
+  animation: nav-progress-slide 900ms ease-in-out infinite;
+}
+
 /* Tôn trọng "giảm chuyển động" của hệ điều hành (WCAG) — tắt mọi animation
    trang trí (vào trang, skeleton pulse); giữ nội dung hiển thị đầy đủ. */
 @media (prefers-reduced-motion: reduce) {
@@ -54,6 +70,11 @@ html {
   }
   .animate-pulse {
     animation: none;
+  }
+  .nav-progress-bar {
+    width: 100%;
+    animation: none;
+    opacity: 0.35;
   }
   html {
     scroll-behavior: auto;
