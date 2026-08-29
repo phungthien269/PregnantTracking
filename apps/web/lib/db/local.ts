@@ -191,6 +191,18 @@ function initSchema(db: DatabaseSync): void {
     )
   }
   db.exec('CREATE INDEX IF NOT EXISTS idx_scope ON maternal_measurements (family_id, private_owner_id)')
+  // C3 (perf): index cho các pattern query nóng — mọi list đều lọc family_id;
+  // logged_at/scheduled_at dùng prefix LIKE (date%), session_id/log_id join con.
+  db.exec(
+    `
+    CREATE INDEX IF NOT EXISTS idx_hydration_logged ON hydration_logs (family_id, logged_at);
+    CREATE INDEX IF NOT EXISTS idx_meals_logged ON meal_entries (family_id, logged_at);
+    CREATE INDEX IF NOT EXISTS idx_chat_session ON chat_messages (session_id);
+    CREATE INDEX IF NOT EXISTS idx_intake_log ON intake_items (log_id);
+    CREATE INDEX IF NOT EXISTS idx_reminders_sched ON reminders (family_id, scheduled_at);
+    CREATE INDEX IF NOT EXISTS idx_family_members_user ON family_members (user_id);
+  `,
+  )
 }
 
 // ---------------------------------------------------------------------------

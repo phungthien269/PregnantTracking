@@ -151,3 +151,24 @@ export function FormLoading() {
     </div>
   )
 }
+
+/** Trang nước & caffeine: vòng tiến độ + các hàng nhật ký (khớp bố cục thật). */
+export function WaterLoading() {
+  return (
+    <div className="space-y-4" aria-busy="true" aria-label="Đang tải">
+      <HeaderSkeleton />
+      <div className="flex flex-wrap items-center justify-center gap-6 rounded-lg border border-border bg-surface p-5 shadow-card sm:justify-between">
+        <Skeleton className="h-24 w-24 rounded-full" />
+        <div className="space-y-2" aria-hidden>
+          <Skeleton className="h-4 w-36" />
+          <Skeleton className="h-4 w-28" />
+        </div>
+      </div>
+      <div className="space-y-3">
+        <RowSkeleton tone />
+        <RowSkeleton />
+        <RowSkeleton tone />
+      </div>
+    </div>
+  )
+}

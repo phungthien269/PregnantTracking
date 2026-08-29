@@ -122,7 +122,7 @@ export function MealLog({ meals, saved, focus }: { meals: MealRow[]; saved: Save
         <TabsContent value="log">
           <Card>
             {meals.length ? (
-              <ul className="divide-y divide-border">
+              <ul className="stagger-list divide-y divide-border">
                 {meals.map((m) => (
                   <li key={m.id} className="flex items-center justify-between gap-3 py-2 text-sm">
                     <div>

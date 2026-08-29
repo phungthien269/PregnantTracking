@@ -46,6 +46,30 @@ html {
   animation: page-enter 180ms ease-out;
 }
 
+/* Danh sách xuất hiện lệch nhịp (stagger): thêm class `stagger-list` vào <ul>/
+   <div> danh sách — con thứ n trễ n×30ms (trần 210ms). Chỉ transform/opacity. */
+@keyframes list-item-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.stagger-list > * {
+  animation: list-item-in 240ms ease-out backwards;
+}
+.stagger-list > *:nth-child(2) { animation-delay: 30ms; }
+.stagger-list > *:nth-child(3) { animation-delay: 60ms; }
+.stagger-list > *:nth-child(4) { animation-delay: 90ms; }
+.stagger-list > *:nth-child(5) { animation-delay: 120ms; }
+.stagger-list > *:nth-child(6) { animation-delay: 150ms; }
+.stagger-list > *:nth-child(7) { animation-delay: 180ms; }
+.stagger-list > *:nth-child(n + 8) { animation-delay: 210ms; }
+
 /* R7 — thanh tiến trình điều hướng: trượt lặp 900ms; reduced-motion → thanh tĩnh mờ. */
 @keyframes nav-progress-slide {
   from {
@@ -69,6 +93,9 @@ html {
     animation: none;
   }
   .animate-pulse {
+    animation: none;
+  }
+  .stagger-list > * {
     animation: none;
   }
   .nav-progress-bar {

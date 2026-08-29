@@ -3,7 +3,6 @@ import { Badge, Card, EmptyState } from '@mevabe/ui'
 import { PageHeader } from '@/components/page-header'
 import { SectionTabs, CAM_NANG_TABS } from '@/components/section-tabs'
 import { QuizRunner } from '@/components/quiz-runner'
-import { LibraryImport } from '@/components/LibraryImport'
 import { LibrarySearch } from '@/components/LibrarySearch'
 import type { DocumentStatus } from '@mevabe/domain'
 
@@ -11,6 +10,8 @@ const docStatusTone = (s?: DocumentStatus | null) =>
   s === 'ready' ? ('success' as const) : s === 'failed' ? ('danger' as const) : s === 'processing' ? ('warning' as const) : ('neutral' as const)
 
 export default async function ThuVienPage() {
+  // R8/B3 (perf): nạp muộn LibraryImport — tách khỏi First Load JS.
+  const { LibraryImport: LazyImport } = await import('@/components/LibraryImport')
   const [documents, quizSets] = await Promise.all([data.getDocuments(), data.getQuizSets()])
   const quizzes = await Promise.all(
     quizSets.map(async (s) => ({ set: s, questions: await data.getQuizQuestions(s.id).catch(() => []) })),
@@ -21,7 +22,7 @@ export default async function ThuVienPage() {
       <PageHeader title="Thư viện của mẹ" description="Tài liệu đã import và các bộ quiz ôn kiến thức." />
       <SectionTabs tabs={CAM_NANG_TABS} />
 
-      <LibraryImport />
+      <LazyImport />
 
       <LibrarySearch />
 

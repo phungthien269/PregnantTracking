@@ -181,7 +181,7 @@ export default async function DashboardPage() {
         {/* Bữa ăn hôm nay */}
         <Card title="Bữa ăn hôm nay" description={fmtDate(todayStr())}>
           {meals.length ? (
-            <ul className="divide-y divide-border">
+            <ul className="stagger-list divide-y divide-border">
               {meals.map((m) => (
                 <li key={m.id} className="flex items-center justify-between gap-3 py-2 text-sm">
                   <div>
@@ -200,7 +200,7 @@ export default async function DashboardPage() {
         {/* Triệu chứng gần đây */}
         <Card title="Triệu chứng gần đây">
           {dash.recentSymptoms.length ? (
-            <ul className="divide-y divide-border">
+            <ul className="stagger-list divide-y divide-border">
               {dash.recentSymptoms.map((s) => (
                 <li key={s.id} className="flex items-center justify-between gap-3 py-2 text-sm">
                   <span className="text-fg">{s.symptom}</span>

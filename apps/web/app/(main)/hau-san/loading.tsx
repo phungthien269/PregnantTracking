@@ -1,5 +1,5 @@
-import { StatsPageLoading } from '@/components/page-skeletons'
+import { ListLoading } from '@/components/page-skeletons'
 
 export default function Loading() {
-  return <StatsPageLoading />
+  return <ListLoading rows={3} />
 }

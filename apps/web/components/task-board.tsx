@@ -76,7 +76,7 @@ export function TaskBoard({ tasks }: { tasks: Task[] }) {
 
       <Card title="Checklist" description="Việc cần làm của cả nhà — người phụ trách được gán khi cần.">
         {sorted.length ? (
-          <ul className="divide-y divide-border">
+          <ul className="stagger-list divide-y divide-border">
             {sorted.map((t) => (
               <li key={t.id} className="flex items-center justify-between gap-3 py-2 text-sm">
                 <div className="flex items-center gap-3">

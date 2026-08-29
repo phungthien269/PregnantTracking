@@ -371,7 +371,7 @@ export function ShoppingBoard({ items, budget }: { items: ShoppingItem[]; budget
 
       <Card title={`Danh sách đồ dùng${spent ? ` · đã chi ${money(spent)}` : ''}`}>
         {items.length ? (
-          <ul className="divide-y divide-border">
+          <ul className="stagger-list divide-y divide-border">
             {items.map((i) => {
               const bought = i.status === 'bought'
               const ref = i.estimated_price ?? refPrice(i.name)
