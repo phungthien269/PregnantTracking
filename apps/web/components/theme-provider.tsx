@@ -45,6 +45,16 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     applyTheme(initialMode, initialAccent)
   }, [])
 
+  // Mode 'system' → theo sát prefers-color-scheme (user đổi sáng/tối hệ thống là
+  // app đổi theo, không cần reload).
+  useEffect(() => {
+    if (mode !== 'system') return
+    const mq = window.matchMedia('(prefers-color-scheme: dark)')
+    const onChange = () => applyTheme('system', accent)
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [mode, accent])
+
   const value = useMemo<ThemeContextValue>(
     () => ({
       mode,

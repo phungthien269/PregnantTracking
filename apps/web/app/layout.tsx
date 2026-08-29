@@ -32,6 +32,15 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="vi" suppressHydrationWarning>
+      <head>
+        {/* Chống FOUC theme: đặt class dark + accent TRƯỚC hydrate, khớp chính xác
+            cách ThemeProvider lưu (mv-theme/mv-accent trong localStorage). */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var m=['light','dark','system'],a=['rose','green','blue','purple','amber'];var t=localStorage.getItem('mv-theme');t=m.indexOf(t)>=0?t:'system';var ac=localStorage.getItem('mv-accent');ac=a.indexOf(ac)>=0?ac:'rose';var r=document.documentElement;var dark=t==='dark'||(t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);r.classList.toggle('dark',dark);r.dataset.accent=ac;}catch(e){}})();`,
+          }}
+        />
+      </head>
       <body className={`${beVietnamPro.variable} min-h-dvh`}>
         <ThemeProvider>
           <SessionProvider>{children}</SessionProvider>

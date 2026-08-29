@@ -22,6 +22,9 @@ export function Modal({
     if (!open) return
     const prev = document.activeElement as HTMLElement | null
     panelRef.current?.focus()
+    // Khóa scroll nền khi modal mở (trả lại như cũ khi đóng).
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         onClose()
@@ -31,6 +34,17 @@ export function Modal({
       // Focus trap: giữ focus trong panel (WCAG 2.1.2 — không kẹt nhưng không thoát ra ngoài modal).
       const panel = panelRef.current
       if (!panel) return
+      // Focus đang đứng tại chính panel (tabIndex=-1): Shift+Tab quay về item cuối.
+      if (e.shiftKey && document.activeElement === panel) {
+        e.preventDefault()
+        const all = Array.from(
+          panel.querySelectorAll<HTMLElement>(
+            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+          ),
+        ).filter((el) => !el.hasAttribute('disabled') && el.getAttribute('aria-hidden') !== 'true')
+        all[all.length - 1]?.focus()
+        return
+      }
       const focusables = Array.from(
         panel.querySelectorAll<HTMLElement>(
           'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
@@ -50,6 +64,7 @@ export function Modal({
     document.addEventListener('keydown', onKey)
     return () => {
       document.removeEventListener('keydown', onKey)
+      document.body.style.overflow = prevOverflow
       prev?.focus?.()
     }
   }, [open, onClose])
