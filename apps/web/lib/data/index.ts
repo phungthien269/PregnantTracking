@@ -18,6 +18,8 @@ export type { DataApi } from './api'
 export * from './api'
 
 import { isSupabaseConfigured } from '@/lib/supabase'
+import { runIsolated, setScopeClient, wrapIsolated, type RequestStore } from './request-scope.server'
+import { getActiveUser } from '../auth/active-user'
 
 export const dataMode: 'supabase' | 'local' = isSupabaseConfigured() ? 'supabase' : 'local'
 
@@ -26,12 +28,15 @@ let resolving: Promise<DataApi> | null = null
 
 /**
  * Bọc supabaseApi bằng Proxy: trước mỗi method → tạo client đã xác thực từ
- * cookie phiên (server), gắn vào request scope, sau đó gọi method thật và dọn
- * dẹp. Các method nội bộ gọi nhau (this.*) vẫn thấy client vì được gắn ở module
- * trong suốt lời gọi ngoài cùng. Dynamic import `./supabase` + supabase-server.
+ * cookie phiên (server) + snapshot active user, đặt vào AsyncLocalStorage STORE
+ * RIÊNG của lời gọi (runIsolated) rồi gọi method thật.
+ * Trước đây dùng biến module-global + refcount: 2 request song song chồng nhau
+ * làm method của A chạy dưới client/user của B (query/ghi sai family).
+ * Các method nội bộ gọi nhau (this.*) vẫn thấy store vì nằm trong cùng
+ * AsyncLocalStorage context. Dynamic import `./supabase` + supabase-server.
  */
 async function createServerDataApi(): Promise<DataApi> {
-  const [{ supabaseApi, setRequestSupabaseClient }, { getServerSupabase }] = await Promise.all([
+  const [{ supabaseApi }, { getServerSupabase }] = await Promise.all([
     import('./supabase'),
     import('@/lib/supabase-server'),
   ])
@@ -42,12 +47,11 @@ async function createServerDataApi(): Promise<DataApi> {
       if (typeof value !== 'function') return value
       return async (...args: unknown[]) => {
         const serverClient = await getServerSupabase()
-        setRequestSupabaseClient(serverClient)
-        try {
-          return await (value as (...a: unknown[]) => unknown).apply(obj, args)
-        } finally {
-          setRequestSupabaseClient(null)
-        }
+        const store: RequestStore = { supabaseClient: serverClient, activeUser: getActiveUser() }
+        return runIsolated(store, async () => {
+          setScopeClient(serverClient)
+          return (value as (...a: unknown[]) => unknown).apply(obj, args)
+        })
       }
     },
   }) as DataApi
@@ -60,11 +64,18 @@ function resolveApi(): Promise<DataApi> {
     const load =
       dataMode === 'supabase'
         ? createServerDataApi()
-        : import('./local').then((m) => m.localApi)
-    resolving = load.then((api) => {
-      resolvedApi = api
-      return api
-    })
+        : import('./local').then((m) => wrapIsolated(m.localApi))
+    // Lỗi load tạm thời (cold-start, disk glitch) KHÔNG được cache vĩnh viễn:
+    // reset `resolving` để lần gọi sau thử lại.
+    resolving = load
+      .then((api) => {
+        resolvedApi = api
+        return api
+      })
+      .catch((err) => {
+        resolving = null
+        throw err
+      })
   }
   return resolving
 }

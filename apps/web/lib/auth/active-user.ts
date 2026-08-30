@@ -28,10 +28,27 @@ export interface ActiveUserContext {
 
 let active: ActiveUserContext | null = null
 
+// ---------------------------------------------------------------------------
+// Reader-hook: server entry (lib/data/index.ts) đăng ký qua
+// request-scope.server.ts để getActiveUser() đọc user theo NGỮ CẢNH REQUEST
+// (AsyncLocalStorage) thay vì biến global — chặn race khi 2 request song song
+// setActiveUser khác nhau. Hook là plain TS (không node:*) → client bundle an toàn.
+// undefined = không có store (browser/không qua index.ts) → fallback biến global.
+// ---------------------------------------------------------------------------
+export type ActiveUserReader = () => ActiveUserContext | null | undefined
+let reader: ActiveUserReader | null = null
+
+/** Chỉ request-scope.server.ts (server-only) được gọi. */
+export function registerActiveUserReader(r: ActiveUserReader): void {
+  reader = r
+}
+
 export function setActiveUser(ctx: ActiveUserContext | null): void {
   active = ctx
 }
 
 export function getActiveUser(): ActiveUserContext | null {
+  const fromScope = reader ? reader() : undefined
+  if (fromScope !== undefined) return fromScope
   return active
 }

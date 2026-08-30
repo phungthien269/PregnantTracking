@@ -48,6 +48,7 @@ import type {
 } from './api'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../supabase'
+import { readRequestClient } from './supabase-client-hook'
 import { weekFromLmp, WEEKS, CURRENT_WEEK, trimesterOf, computeNutritionFocus } from './mock'
 import { aggregateNutrients, buildNutrientSummary } from '../nutrition/intake-calcs'
 import { todayStr } from '../format'
@@ -76,8 +77,11 @@ export function setRequestSupabaseClient(c: SupabaseClient | null): void {
   }
 }
 
-/** Client hiện dùng: ưu tiên request-scoped (server) → singleton (browser). */
+/** Client hiện dùng: ưu tiên store theo request (AsyncLocalStorage, server) →
+ *  refcount module (browser/back-compat) → singleton browser. */
 function db(): SupabaseClient {
+  const fromScope = readRequestClient()
+  if (fromScope) return fromScope
   if (requestClient) return requestClient
   if (supabase) return supabase
   throw new Error('[supabase] Chưa cấu hình NEXT_PUBLIC_SUPABASE_URL/ANON_KEY')

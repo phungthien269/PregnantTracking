@@ -95,8 +95,11 @@ interface ScopeOpts {
 
 function scope(): ScopeOpts {
   const au = getActiveUser()
-  if (!au) return {}
-  return { familyId: au.family_id || undefined, privateId: au.user_id }
+  // Không có active user → scope về family DEMO thay vì `{}` (trả TOÀN BỘ DB).
+  // `{}` chỉ an toàn khi DB có đúng 1 family demo; khi có family khác đăng ký,
+  // mọi GET /api/v1/* sẽ lộ dữ liệu chéo family. Family demo giữ nguyên hành vi cũ.
+  if (!au) return { familyId: FAMILY_ID }
+  return { familyId: au.family_id || FAMILY_ID, privateId: au.user_id }
 }
 
 function myFamilyId(): string {
