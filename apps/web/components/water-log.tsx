@@ -12,7 +12,7 @@ const CAFFE_TEA_MG = 30
 
 /** Theo dõi nước & caffeine 1 chạm. Nước lưu qua data.addWater(); caffeine chỉ theo dõi local. */
 export function WaterLog({ initial }: { initial: WaterCaffeine }) {
-    const router = useRouter()
+  const router = useRouter()
   const [logged, setLogged] = useState(initial.waterLoggedMl)
   const [caff, setCaff] = useState(initial.caffeineLoggedMg)
   const [error, setError] = useState('')
@@ -25,6 +25,7 @@ export function WaterLog({ initial }: { initial: WaterCaffeine }) {
     setError('')
     try {
       await data.addWater({ logged_at: new Date().toISOString(), amount_ml: amountMl })
+      router.refresh() // đồng bộ phần server-render (banner/stats nước)
     } catch (err) {
       setLogged((l) => Math.max(0, l - amountMl))
       setError(isOfflineError(err) ? OFFLINE_MESSAGE : 'Chưa ghi được lượng nước — mẹ thử lại.')
