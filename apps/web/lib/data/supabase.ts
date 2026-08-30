@@ -247,7 +247,7 @@ const supabaseImpl = {
   async addAppointment(input: AppointmentInput): Promise<D.Appointment> {
     return insertRow<D.Appointment>('appointments', {
       private_owner_id: null,
-      pregnancy_id: PREG_ID,
+      pregnancy_id: await requirePregnancyId(),
       type: input.type,
       scheduled_at: input.scheduled_at,
       location: input.location ?? null,
@@ -307,13 +307,13 @@ const supabaseImpl = {
       .from('hydration_logs')
       .select('amount_ml')
       .gte('logged_at', `${today}T00:00:00+07:00`)
-      .lt('logged_at', `${today}T23:59:59+07:00`)
+      .lt('logged_at', `${nextDay(today)}T00:00:00+07:00`)
     if (hErr) throw hErr
     const { data: caffeine, error: cErr } = await db()
       .from('caffeine_logs')
       .select('amount_mg')
       .gte('logged_at', `${today}T00:00:00+07:00`)
-      .lt('logged_at', `${today}T23:59:59+07:00`)
+      .lt('logged_at', `${nextDay(today)}T00:00:00+07:00`)
     if (cErr) throw cErr
     const sum = (rows: { amount_mg?: number; amount_ml?: number }[], key: 'amount_ml' | 'amount_mg') =>
       (rows ?? []).reduce((acc, r) => acc + (r[key] ?? 0), 0)
@@ -335,12 +335,14 @@ const supabaseImpl = {
 
   async getNutritionProfile(): Promise<D.NutritionProfile | null> {
     const rows = await getRows<D.NutritionProfile>('nutrition_profiles')
-    return rows.find((n) => n.pregnancy_id === PREG_ID) ?? null
+    const pid = await currentPregnancyId()
+    return (pid ? rows.find((n) => n.pregnancy_id === pid) : null) ?? null
   },
 
   async updateNutritionProfile(input: NutritionProfileInput): Promise<D.NutritionProfile> {
     const rows = await getRows<D.NutritionProfile>('nutrition_profiles')
-    const current = rows.find((n) => n.pregnancy_id === PREG_ID)
+    const pid = await currentPregnancyId()
+    const current = pid ? rows.find((n) => n.pregnancy_id === pid) : undefined
     const patch: Record<string, unknown> = {}
     if (input.conditions !== undefined) patch.conditions = input.conditions
     if (input.doctor_instructions !== undefined) patch.doctor_instructions = input.doctor_instructions
@@ -350,7 +352,7 @@ const supabaseImpl = {
     }
     return insertRow<D.NutritionProfile>('nutrition_profiles', {
       private_owner_id: null,
-      pregnancy_id: PREG_ID,
+      pregnancy_id: await requirePregnancyId(),
       dietary_pattern: 'omnivore',
       allergies: [],
       dislikes: [],
@@ -423,7 +425,7 @@ const supabaseImpl = {
   async addBirthRecord(input: BirthRecordInput): Promise<D.BirthRecord> {
     return insertRow<D.BirthRecord>('birth_records', {
       private_owner_id: null,
-      pregnancy_id: input.pregnancy_id ?? PREG_ID,
+      pregnancy_id: input.pregnancy_id ?? (await requirePregnancyId()),
       birth_date: input.birth_date,
       birth_type: input.birth_type,
       hospital: input.hospital ?? null,
@@ -682,12 +684,17 @@ const supabaseImpl = {
   async searchKnowledgeChunks(query: string): Promise<D.KnowledgeChunk[]> {
       const q = query.trim()
     if (!q) return []
+    // `.or()` của PostgREST dùng `,` `(` `)` làm ký tự grammar — query tiếng Việt
+    // chứa các ký tự này (vd "canxi, sắt") làm vỡ filter → 400 vĩnh viễn.
+    // Sanitize trước, đồng thời chặn chèn mệnh đề filter tùy ý.
+    const safe = q.replace(/[,()"]/g, ' ').trim()
+    if (!safe) return []
     // ponytail: ilike đơn giản — khi Agent 5 nối embedding thật thì chuyển sang
     // pgvector (rpc). Giữ giới hạn 50 kết quả.
     const { data, error } = await db()
       .from('knowledge_chunks')
       .select('*')
-      .or(`content.ilike.%${q}%,citation.ilike.%${q}%`)
+      .or(`content.ilike.%${safe}%,citation.ilike.%${safe}%`)
       .order('position', { ascending: true })
       .limit(50)
     if (error) throw error
@@ -914,7 +921,7 @@ const supabaseImpl = {
     if (kept.length === 0) return { created: [], duplicates }
 
     const pregnancy = await this.getPregnancy()
-    const pregnancy_id = pregnancy?.id ?? PREG_ID
+    const pregnancy_id = pregnancy?.id ?? (await requirePregnancyId())
 
     // ponytail: insert lần lượt — batch insert supabase-js chưa cấu hình generic schema;
     // payload iOS tối đa 1000 mẫu, dedupe xong thường ít.
@@ -941,7 +948,7 @@ const supabaseImpl = {
   async addMeasurement(m: { type: D.MeasurementType; value: number; unit: string; diastolic?: number; taken_at: string; note?: string }): Promise<D.MaternalMeasurement> {
     return insertRow<D.MaternalMeasurement>('maternal_measurements', {
       private_owner_id: null,
-      pregnancy_id: PREG_ID,
+      pregnancy_id: await requirePregnancyId(),
       type: m.type,
       value: m.value,
       unit: m.unit,
@@ -952,10 +959,15 @@ const supabaseImpl = {
     })
   },
 
-  async addSymptom(s: { symptom: string; severity: D.SymptomSeverity; started_at: string; note?: string }): Promise<D.SymptomReport> {
+  async addSymptom(s: SymptomReportInput): Promise<D.SymptomReport> {
+    // Hợp đồng api.ts: `private: true` → private_owner_id = người tạo (Chỉ mình tôi);
+    // false/undefined → dùng chung gia đình. Trước đây luôn null = rò rỉ quyền riêng tư.
+    const {
+      data: { user },
+    } = await db().auth.getUser()
     return insertRow<D.SymptomReport>('symptom_reports', {
-      private_owner_id: null,
-      pregnancy_id: PREG_ID,
+      private_owner_id: s.private ? (user?.id ?? null) : null,
+      pregnancy_id: await requirePregnancyId(),
       symptom: s.symptom,
       severity: s.severity,
       started_at: s.started_at,
@@ -965,13 +977,17 @@ const supabaseImpl = {
     })
   },
 
-  /** Import hàng loạt triệu chứng (tối đa 100) — insert nhiều dòng, RLS tự lọc theo family. */
+  /** Import hàng loạt triệu chứng (tối đa 100) — tôn trọng `private` từng item như addSymptom. */
   async importSymptoms(items: SymptomReportInput[]): Promise<{ created: number }> {
     const family_id = await currentFamilyId()
+    const {
+      data: { user },
+    } = await db().auth.getUser()
+    const pregnancy_id = await requirePregnancyId()
     const rows = items.map((s) => ({
       family_id,
-      private_owner_id: null,
-      pregnancy_id: PREG_ID,
+      private_owner_id: s.private ? (user?.id ?? null) : null,
+      pregnancy_id,
       symptom: s.symptom,
       severity: s.severity,
       started_at: s.started_at,
@@ -1029,7 +1045,7 @@ const supabaseImpl = {
 
   async addFetus(input: FetusInput): Promise<D.Fetus> {
     const pregnancy = await this.getPregnancy()
-    const pregnancy_id = pregnancy?.id ?? PREG_ID
+    const pregnancy_id = pregnancy?.id ?? (await requirePregnancyId())
     const rows = await getRows<D.Fetus>('fetuses')
     const order = input.birth_order ?? Math.max(0, ...rows.filter((f) => f.pregnancy_id === pregnancy_id).map((f) => f.birth_order)) + 1
     return insertRow<D.Fetus>('fetuses', {
@@ -1063,7 +1079,8 @@ const supabaseImpl = {
   /** Cập nhật hồ sơ sức khỏe cá nhân của thai kỳ hiện tại (health_profiles). */
   async updateHealthProfile(input: HealthProfileUpdateInput): Promise<D.HealthProfile> {
     const rows = await getRows<D.HealthProfile>('health_profiles')
-    const current = rows.find((h) => h.pregnancy_id === PREG_ID)
+    const pid = await currentPregnancyId()
+    const current = pid ? rows.find((h) => h.pregnancy_id === pid) : undefined
     if (!current) throw new Error('[supabase] Không tìm thấy hồ sơ sức khỏe')
     const patch: Record<string, unknown> = {}
     if (input.height_cm !== undefined) patch.height_cm = input.height_cm
@@ -1120,7 +1137,7 @@ const supabaseImpl = {
   async addFetalMovement(input: { felt_at: string; feeling: D.FetalMovementFeeling; duration_min?: number | null; note?: string }): Promise<D.FetalMovementLog> {
     return insertRow<D.FetalMovementLog>('fetal_movement_logs', {
       private_owner_id: null,
-      pregnancy_id: PREG_ID,
+      pregnancy_id: await requirePregnancyId(),
       felt_at: input.felt_at,
       feeling: input.feeling,
       duration_min: input.duration_min ?? null,
