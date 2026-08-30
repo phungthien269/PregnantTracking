@@ -9,17 +9,26 @@ và chăm bé 0–24 tháng (bú, ngủ, tã, tăng trưởng, mốc phát tri�
 5 accent tùy chỉnh. Chi tiết sản phẩm: [`outputs/implementation-plan.md`](../outputs/implementation-plan.md).
 
 > Tài liệu kỹ thuật: kiến trúc, API ref, runbook, checklist nghiệm thu tại `orchestration/docs/`.
-> Trạng thái: **Phase 1–3 đã xong** (web hoàn chỉnh, chạy demo; backend Supabase
-> sẵn sàng khi cấu hình env — xem `supabase/README.md`). Tiến độ: `orchestration/status/project.md`.
+> **Trạng thái (2026-08-30): ĐÃ DEPLOY PRODUCTION** — dữ liệu thật trên Supabase,
+> auth Supabase, Web Push, email (Resend), offline PWA, CI xanh.
+>
+> [![CI](https://github.com/phungthien269/PregnantTracking/actions/workflows/ci.yml/badge.svg)](https://github.com/phungthien269/PregnantTracking/actions/workflows/ci.yml)
+> 🌐 **Bản chạy thử:** https://web-sage-omega-93.vercel.app — đăng nhập `me@demo.vn` / `demo1234`
+> (bố: `bo@demo.vn` — hoặc tham gia gia đình bằng mã mời `MEVABE`)
+>
+> Tiến độ chi tiết: `orchestration/status/project.md`.
 
 ## Nhanh
 
 ```bash
 pnpm install
-pnpm dev          # web ở http://localhost:3000
+pnpm dev          # web ở http://localhost:3000 (cloud nếu có env Supabase)
 pnpm typecheck    # tsc toàn repo (turbo)
+pnpm lint         # eslint
 pnpm build        # next build (turbo)
+bash scripts/smoke.sh --rebuild   # 65 kiểm thử nghiệm thu (chế độ local)
 ```
+Health check: `GET /api/v1/health` — `{ status, mode, time }`.
 
 Yêu cầu: Node ≥ 20, pnpm ≥ 11 (bản đang dùng: `pnpm@11.17.0`).
 
