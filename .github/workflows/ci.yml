@@ -38,5 +38,14 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
+      - name: Lint
+        run: pnpm lint
+
+      - name: Test domain (8)
+        run: bash scripts/test-domain.sh
+
+      - name: Test web (39)
+        run: bash scripts/test-web.sh
+
       - name: Build
         run: pnpm build

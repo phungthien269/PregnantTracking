@@ -1,5 +1,6 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { data } from '@/lib/data/client-entry'
 import { APPOINTMENT_LABELS, APPOINTMENT_OPTIONS } from '@/lib/labels'
@@ -49,6 +50,7 @@ const emptyForm = (): FormState => ({
 })
 
 export function AppointmentManager({ initial }: { initial: Appointment[] }) {
+    const router = useRouter()
   const [appointments, setAppointments] = useState<Appointment[]>(initial)
   const [modal, setModal] = useState<ModalState>(null)
   const [form, setForm] = useState<FormState>(emptyForm)
@@ -119,6 +121,7 @@ export function AppointmentManager({ initial }: { initial: Appointment[] }) {
       if (modal?.kind === 'add') {
         const created = await data.addAppointment(base)
         setAppointments((prev) => [...prev, created])
+      router.refresh() // đồng bộ phần server-render (dashboard/banner lịch khám)
       } else if (modal?.kind === 'edit') {
         const updated = await data.updateAppointment(modal.id, {
           ...base,
@@ -128,6 +131,7 @@ export function AppointmentManager({ initial }: { initial: Appointment[] }) {
           followup_at: form.followup_at ? fromLocalInput(form.followup_at) : null,
         })
         setAppointments((prev) => prev.map((a) => (a.id === modal.id ? updated : a)))
+        router.refresh()
       }
       setModal(null)
     } catch (err) {

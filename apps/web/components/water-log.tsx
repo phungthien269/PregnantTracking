@@ -1,5 +1,6 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { data, type WaterCaffeine } from '@/lib/data/client-entry'
 import { isOfflineError, OFFLINE_MESSAGE } from '@/lib/api-error'
@@ -11,6 +12,7 @@ const CAFFE_TEA_MG = 30
 
 /** Theo dõi nước & caffeine 1 chạm. Nước lưu qua data.addWater(); caffeine chỉ theo dõi local. */
 export function WaterLog({ initial }: { initial: WaterCaffeine }) {
+    const router = useRouter()
   const [logged, setLogged] = useState(initial.waterLoggedMl)
   const [caff, setCaff] = useState(initial.caffeineLoggedMg)
   const [error, setError] = useState('')
