@@ -48,7 +48,7 @@ import type {
 } from './api'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../supabase'
-import { PREG_ID, weekFromLmp, WEEKS, CURRENT_WEEK, trimesterOf, computeNutritionFocus } from './mock'
+import { weekFromLmp, WEEKS, CURRENT_WEEK, trimesterOf, computeNutritionFocus } from './mock'
 import { aggregateNutrients, buildNutrientSummary } from '../nutrition/intake-calcs'
 import { todayStr } from '../format'
 import { dedupeHealthMetrics, healthMetricKey, type HealthMetricInput } from '../health-sync'
@@ -112,8 +112,32 @@ async function insertRow<T>(table: string, row: Record<string, unknown>): Promis
 }
 
 async function updateRow(table: string, id: string, patch: Record<string, unknown>): Promise<void> {
-  const { error } = await db().from(table).update(patch).eq('id', id)
+  // `.select('id')` bắt buộc: supabase-js KHÔNG trả error khi update ảnh hưởng
+  // 0 dòng (RLS chặn / id sai family) — kiểm tra dòng trả về để không "thành
+  // công" im lặng rồi mất dữ liệu khi refresh.
+  const { data, error } = await db().from(table).update(patch).eq('id', id).select('id').maybeSingle()
   if (error) throw error
+  if (!data) throw new Error(`[supabase] Cập nhật ${table} id=${id} không thành công (không tìm thấy hoặc bị RLS chặn)`)
+}
+
+/** id thai kỳ ongoing của family hiện tại (null nếu chưa có). */
+async function currentPregnancyId(): Promise<string | null> {
+  const rows = await getRows<D.Pregnancy>('pregnancies')
+  return rows.find((p) => p.status === 'ongoing')?.id ?? null
+}
+
+/** id thai kỳ ongoing — bắt buộc phải có mới ghi được dữ liệu gắn thai kỳ. */
+async function requirePregnancyId(): Promise<string> {
+  const id = await currentPregnancyId()
+  if (!id) throw new Error('[supabase] Chưa có thai kỳ đang diễn ra — hãy tạo thai kỳ trước')
+  return id
+}
+
+/** Ngày kế tiếp của `date` (YYYY-MM-DD) — dùng làm biên trên [date 00:00, next 00:00). */
+function nextDay(date: string): string {
+  const d = new Date(`${date}T00:00:00Z`)
+  d.setUTCDate(d.getUTCDate() + 1)
+  return d.toISOString().slice(0, 10)
 }
 
 const DAY_MS = 86_400_000
@@ -160,7 +184,7 @@ const supabaseImpl = {
         getRows<D.SymptomReport>('symptom_reports'),
         getRows<D.Task>('tasks'),
         getRows<D.MealEntry>('meal_entries'),
-        getRows<{ amount_ml?: number }>('hydration_logs'),
+        getRows<{ amount_ml?: number; logged_at?: string }>('hydration_logs'),
       ])
     const preg = pregnancies.find((p) => p.status === 'ongoing') ?? null
     const week = preg?.lmp ? weekFromLmp(preg.lmp) : CURRENT_WEEK
@@ -168,11 +192,19 @@ const supabaseImpl = {
     const daysLeft = preg?.edd
       ? Math.round((Date.parse(preg.edd) - Date.now()) / DAY_MS)
       : 0
+    // PostgREST không đảm bảo thứ tự mặc định → sort rõ ràng trước khi slice.
     const upcoming = appointments
       .filter((a) => new Date(a.scheduled_at).getTime() > Date.now())
+      .sort((a, b) => a.scheduled_at.localeCompare(b.scheduled_at))
       .slice(0, 2)
-    const latestWeights = measurements.filter((m) => m.type === 'weight').slice(-2)
-    const latestBp = measurements.filter((m) => m.type === 'blood_pressure').slice(-1)
+    const latestWeights = measurements
+      .filter((m) => m.type === 'weight')
+      .sort((a, b) => a.taken_at.localeCompare(b.taken_at))
+      .slice(-2)
+    const latestBp = measurements
+      .filter((m) => m.type === 'blood_pressure')
+      .sort((a, b) => a.taken_at.localeCompare(b.taken_at))
+      .slice(-1)
     const ongoing = symptoms.filter((x) => x.ended_at === null)
     const today = todayStr()
     return {
@@ -183,7 +215,10 @@ const supabaseImpl = {
       taskCount: tasks.length,
       tasksDone: tasks.filter((t) => t.status === 'done').length,
       mealCountToday: meals.filter((m) => m.logged_at.startsWith(today)).length,
-      waterLoggedMl: hydration.reduce((acc, r) => acc + (r.amount_ml ?? 0), 0),
+      // Chỉ tính nước HÔM NAY (khớp getWaterCaffeine — trước đây cộng cả lịch sử).
+      waterLoggedMl: hydration
+        .filter((r) => r.logged_at?.startsWith(today))
+        .reduce((acc, r) => acc + (r.amount_ml ?? 0), 0),
       waterGoalMl: 2000,
       upcomingAppointments: upcoming,
       latestMeasurements: [...latestWeights, ...latestBp],
@@ -254,7 +289,8 @@ const supabaseImpl = {
   },
 
   async getMealsByDate(date: string): Promise<D.MealEntry[]> {
-      const { data, error } = await db().from('meal_entries').select('*').gte('logged_at', `${date}T00:00:00+07:00`).lt('logged_at', `${date}T23:59:59+07:00`)
+      // Biên [00:00, 00:00 ngày sau) — trước đây `lt 23:59:59` làm mất log ở giây cuối ngày.
+      const { data, error } = await db().from('meal_entries').select('*').gte('logged_at', `${date}T00:00:00+07:00`).lt('logged_at', `${nextDay(date)}T00:00:00+07:00`)
     if (error) throw error
     return (data ?? []) as D.MealEntry[]
   },
