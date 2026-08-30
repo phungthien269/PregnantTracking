@@ -1,6 +1,5 @@
 import Link from 'next/link'
 import { data } from '@/lib/data'
-import { generateInsight } from '@/lib/ai'
 import { fmtDate, fmtDayMonth, fmtDateTime, todayStr } from '@/lib/format'
 import { APPOINTMENT_LABELS, MEAL_LABELS, SEVERITY_LABELS, TRIMESTER_LABELS } from '@/lib/labels'
 import { EmergencyCard } from '@/components/emergency-card'
@@ -51,25 +50,16 @@ export default async function DashboardPage() {
       </div>
     )
   }
-  const { pregnancy: preg, dashboard: dash, mealsToday: meals, water, fetuses, birthRecord: birth } = bundle
+  const { pregnancy: preg, dashboard: dash, mealsToday: meals, fetuses, birthRecord: birth } = bundle
   // getFetuses() trả toàn bộ thai của gia đình → lọc theo thai kỳ đang theo dõi.
   const activeFetuses = fetuses.filter((f) => f.pregnancy_id === preg.id)
   const isMulti = activeFetuses.length > 1
 
-  // Insight tiếng Việt — AI nếu có key, ngược lại fallback template theo tuần.
-  // ponytail: gọi AI mỗi lần load; thêm cache (vd theo ngày) khi đi production.
-  const insight = await generateInsight({
-    week: dash.week,
-    trimester: dash.trimester,
-    measurements: dash.latestMeasurements,
-    symptoms: dash.recentSymptoms,
-    mealCountToday: dash.mealCountToday,
-  })
 
+  const waterPct = dash.waterGoalMl > 0 ? (dash.waterLoggedMl / dash.waterGoalMl) * 100 : 0
   const weightPoints = dash.latestMeasurements
     .filter((m) => m.type === 'weight')
     .map((m) => ({ label: fmtDayMonth(m.taken_at), value: m.value }))
-  const waterPct = dash.waterGoalMl > 0 ? (dash.waterLoggedMl / dash.waterGoalMl) * 100 : 0
 
   return (
     <div className="space-y-6">
@@ -98,8 +88,9 @@ export default async function DashboardPage() {
         </div>
       </section>
 
-      {/* Đã sinh — chuyển hậu sản */}
-      {birth && (
+      {/* R-UX: "Đã sinh" chỉ hiển thị khi KHÔNG còn thai kỳ ongoing (trước đây
+          hiện cả khi đang mang thai lần sau — mâu thuẫn, gây dài dòng). */}
+      {birth && !preg && (
         <section className="rounded-lg border border-border bg-surface p-5 shadow-card">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
@@ -163,19 +154,7 @@ export default async function DashboardPage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Insight ngày */}
-        <Card title="Insight hôm nay" description="Gợi ý nhẹ cho mẹ">
-          <p className="text-sm text-fg">{insight.insight}</p>
-          {insight.ai && (
-            <p className="mt-1 text-xs text-muted">
-              ✨ {insight.provider}/{insight.model}
-            </p>
-          )}
-          <p className="mt-2 text-xs text-muted">
-            Caffeine: {water.caffeineLoggedMg}/{water.caffeineLimitMg} mg — chỉ theo dõi, không khuyến cáo cứng.
-          </p>
-        </Card>
-
+        {/* R-UX: bỏ thẻ Insight (trùng câu insight trong Banner ở đầu trang). */}
         {/* Xu hướng cân nặng */}
         <Card title="Xu hướng cân nặng" description="Dựa trên các lần đo gần đây">
           {weightPoints.length ? (

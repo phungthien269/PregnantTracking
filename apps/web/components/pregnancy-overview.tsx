@@ -1,31 +1,14 @@
-// components/pregnancy-overview.tsx — Tóm tắt đầy đủ hành trình thai kỳ hiện tại
-// cho trang chủ (dashboard). Server component: nhận `dash` từ trang, tự nạp thêm
-// weekInfo / lịch khám / reminder / nước. Chỉ IMPORT dữ liệu dinh dưỡng
-// (getWeeklyFocus) — không sửa lib/data, lib/knowledge hay tuan/**.
+// components/pregnancy-overview.tsx — Hero tuần thai + việc cần làm + lịch khám
+// (R-UX: gọn — chi tiết dinh dưỡng/vận động đã về /dinh-duong và /tuan/[week]).
+// Server component: nhận `dash` từ trang, tự nạp weekInfo / lịch khám / reminder / nước.
 import Link from 'next/link'
 import { data, type DashboardSummary } from '@/lib/data'
-import { fmtDate, fmtDateTime, todayStr } from '@/lib/format'
+import { fmtDate, fmtDateTime } from '@/lib/format'
 import { APPOINTMENT_LABELS, TRIMESTER_LABELS } from '@/lib/labels'
-import { getNutrientReference, getWeeklyFocus } from '@/lib/nutrition'
 import { hcmParts, isDueToday } from '@/lib/notification-due'
-import { DEFAULT_APPOINTMENT_SCHEDULE, type Trimester } from '@mevabe/domain'
+import { DEFAULT_APPOINTMENT_SCHEDULE } from '@mevabe/domain'
 import { Badge, buttonClasses, Card } from '@mevabe/ui'
-
-/** Gợi ý ngắn vận động & giấc ngủ theo tam cá nguyệt (knowledge lifestyle-exercise-sleep). */
-const LIFESTYLE_TIPS: Record<Trimester, { exercise: string; sleep: string }> = {
-  first: {
-    exercise: 'Vận động nhẹ, chia nhỏ 5–10 phút; tránh quá nóng và môn dễ ngã.',
-    sleep: 'Buồn ngủ nhiều hơn — ngủ đủ 7–10 giờ/đêm.',
-  },
-  second: {
-    exercise: 'Giai đoạn nhiều năng lượng — vận động ≥150 phút/tuần cường độ vừa.',
-    sleep: 'Giấc ngủ tốt nhất thai kỳ — duy trì 7–8 giờ, tập nằm nghiêng.',
-  },
-  third: {
-    exercise: 'Giảm cường độ — đi bộ nhẹ, hít thở, giãn cơ chuẩn bị sinh.',
-    sleep: 'Nằm nghiêng khi ngủ (từ tuần 28), kê gối đỡ bụng và chân.',
-  },
-}
+import { todayStr } from '@/lib/format'
 
 export async function PregnancyOverview({
   dash,
@@ -42,8 +25,6 @@ export async function PregnancyOverview({
     data.getReminders(),
     data.getWaterCaffeine(),
   ])
-  const weekFocus = getWeeklyFocus(dash.week)
-  const tips = LIFESTYLE_TIPS[dash.trimester]
 
   // Reminder đến hạn hôm nay theo giờ VN — cùng pattern lib/notification-due.
   const today = todayStr()
@@ -64,7 +45,7 @@ export async function PregnancyOverview({
 
   return (
     <div className="space-y-6">
-      {/* 1. Tuần hiện tại nổi bật */}
+      {/* 1. Hero tuần hiện tại — gọn: tuần + dự sinh + bé + liên kết nhanh */}
       <section className="rounded-lg border border-border bg-surface p-5 shadow-card">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
@@ -110,70 +91,7 @@ export async function PregnancyOverview({
         </div>
       </section>
 
-      {/* 2. Trọng tâm tuần này: dinh dưỡng + vận động/giấc ngủ */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card
-          title="Dinh dưỡng tuần này"
-          description={
-            weekFocus ? `${weekFocus.phaseLabel} · tuần ${weekFocus.weekStart}–${weekFocus.weekEnd}` : `Tuần ${dash.week}`
-          }
-        >
-          {weekFocus ? (
-            <div className="space-y-3">
-              <ul className="space-y-2">
-                {weekFocus.focus.slice(0, 3).map((f) => (
-                  <li key={f.nutrientId} className="border-l-2 border-border pl-3">
-                    <p className="text-sm font-medium text-fg">
-                      {getNutrientReference(f.nutrientId)?.name ?? f.nutrientId}
-                    </p>
-                    <p className="mt-0.5 text-xs leading-relaxed text-muted">{f.reason}</p>
-                  </li>
-                ))}
-              </ul>
-              {weekFocus.dailyGoals && (
-                <p className="rounded-md bg-accent-soft/40 p-3 text-xs leading-relaxed text-success">
-                  🎯 {weekFocus.dailyGoals}
-                </p>
-              )}
-              <div>
-                <p className="text-xs font-medium text-muted">Thực phẩm gợi ý</p>
-                <div className="mt-1.5 flex flex-wrap gap-1.5">
-                  {weekFocus.suggestedFoods.slice(0, 6).map((f) => (
-                    <span key={f} className="rounded-full bg-accent-soft px-2.5 py-0.5 text-xs text-success">
-                      {f}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
-          ) : (
-            <p className="text-sm text-muted">Chưa có hướng dẫn dinh dưỡng cho tuần này.</p>
-          )}
-          <div className="mt-3">
-            <Link className={buttonClasses('secondary', 'sm')} href="/dinh-duong">
-              Xem khuyến nghị đầy đủ →
-            </Link>
-          </div>
-        </Card>
-
-        <Card title="Vận động & giấc ngủ" description={TRIMESTER_LABELS[dash.trimester]}>
-          <ul className="space-y-3 text-sm">
-            <li className="flex gap-2">
-              <span aria-hidden>🏃‍♀️</span>
-              <span className="text-fg">{tips.exercise}</span>
-            </li>
-            <li className="flex gap-2">
-              <span aria-hidden>😴</span>
-              <span className="text-fg">{tips.sleep}</span>
-            </li>
-          </ul>
-          <p className="mt-4 border-t border-border pt-3 text-xs text-muted">
-            Khuyến nghị tham khảo ACOG/WHO/NHS — không thay thế tư vấn bác sĩ.
-          </p>
-        </Card>
-      </div>
-
-      {/* 3. Việc cần làm / checklist */}
+      {/* 2. Việc cần làm hôm nay | Lịch khám sắp tới */}
       <div className="grid gap-6 lg:grid-cols-2">
         <Card
           title="Việc cần làm"
@@ -205,9 +123,10 @@ export async function PregnancyOverview({
             </ul>
           )}
           <div className="mt-3 flex items-center justify-between gap-3 border-t border-border pt-3 text-sm">
-            <span className="font-medium text-fg">💧 Nước hôm nay</span>
+            <span className="font-medium text-fg">💧 Nước · caffeine</span>
             <span className="text-xs text-muted">
-              {water.waterLoggedMl} / {water.waterGoalMl} ml ({waterPct}%)
+              {water.waterLoggedMl}/{water.waterGoalMl} ml ({waterPct}%) · {water.caffeineLoggedMg}/
+              {water.caffeineLimitMg} mg
             </span>
           </div>
           <div className="mt-3">
