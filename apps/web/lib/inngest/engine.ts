@@ -11,7 +11,8 @@
 import type * as D from '@mevabe/domain'
 import { data } from '@/lib/data'
 import { sendEmail } from '@/lib/notify/email'
-import { currentUserEmail } from '@/lib/notify/recipient'
+import { currentUserEmail, currentUserId } from '@/lib/notify/recipient'
+import { sendPushToUser, pushConfigured } from '@/lib/notify/push'
 import { todayStr } from '@/lib/format'
 import {
   hcmParts,
@@ -136,8 +137,25 @@ export async function collectDueNotifications(): Promise<NotificationMessage[]> 
  *  email → GOM 1 EMAIL gửi thật qua Resend cho user hiện tại (thiếu key → bỏ qua). */
 export async function runDueNotifications(): Promise<NotificationMessage[]> {
   const due = await collectDueNotifications()
-  const inApp = due.filter((m) => m.channel !== 'email')
+  const pushMsgs = due.filter((m) => m.channel === 'push')
+  const inApp = due.filter((m) => m.channel === 'in_app')
   const emails = due.filter((m) => m.channel === 'email')
+
+  // Web Push: gửi tới TẤT CẢ thiết bị của user (pushConfigured → web-push; thiếu → in-app).
+  if (pushMsgs.length) {
+    const uid = await currentUserId()
+    if (uid && pushConfigured()) {
+      const r = await sendPushToUser(uid, {
+        title: pushMsgs[0]!.title,
+        body: pushMsgs.map((m) => m.title).slice(0, 5).join(' · '),
+        url: '/dashboard',
+      })
+      console.log(`[notify] push gửi ${r.sent}, huỷ ${r.removed} endpoint chết`)
+    } else {
+      await Promise.all(pushMsgs.map((m) => notifyClient.send(m)))
+    }
+  }
+
   await Promise.all(inApp.map((m) => notifyClient.send(m)))
   if (emails.length) {
     const to = await currentUserEmail()

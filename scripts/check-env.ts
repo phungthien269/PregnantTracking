@@ -80,6 +80,16 @@ const VARS: VarDef[] = [
     note: 'Gateway AI (chat, insight, quiz, OCR)',
   },
   {
+    key: 'VAPID_PUBLIC_KEY',
+    group: 'notify',
+    note: 'Web Push public (đẩy hệ điều hành)',
+  },
+  {
+    key: 'VAPID_PRIVATE_KEY',
+    group: 'notify',
+    note: 'Web Push private (server-only)',
+  },
+  {
     key: 'RESEND_API_KEY',
     group: 'notify',
     note: 'Gửi email thật (kênh email) — thiếu → fallback in-app',

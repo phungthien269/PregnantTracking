@@ -1,6 +1,7 @@
 import { Badge, Card } from '@mevabe/ui'
 import { PageHeader } from '@/components/page-header'
 import { CHANNELS, NotificationChannels, type ChannelMap } from '@/components/notification-channels'
+import { PushToggle } from '@/components/push-toggle'
 import { data } from '@/lib/data'
 import { isOfflineError, OFFLINE_MESSAGE } from '@/lib/api-error'
 import type { NotificationChannel } from '@mevabe/domain'
@@ -86,6 +87,8 @@ export default async function ThongBaoPage() {
       </Card>
 
       <NotificationChannels initial={channels} />
+
+      <PushToggle />
 
       <Card title="Bản tin sáng" description="Nhắc đến hạn hôm nay theo giờ Việt Nam">
         <ul className="space-y-2">

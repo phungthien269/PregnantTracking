@@ -23,3 +23,16 @@ export async function currentUserEmail(): Promise<string | null> {
   if (!au) return null
   return dbUserById(au.user_id)?.email ?? null
 }
+
+/** ID user hiện tại (cho Web Push: subscriptions theo user). */
+export async function currentUserId(): Promise<string | null> {
+  if (isSupabaseConfigured()) {
+    const client = await getServerSupabase()
+    if (!client) return null
+    const {
+      data: { user },
+    } = await client.auth.getUser()
+    return user?.id ?? null
+  }
+  return getActiveUser()?.user_id ?? null
+}

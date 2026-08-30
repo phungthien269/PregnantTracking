@@ -121,6 +121,7 @@ const TABLES: Record<string, { extra?: string[] }> = {
   visit_documents: { extra: ['visit_id'] },
   chat_sessions: {},
   chat_messages: { extra: ['session_id'] },
+  push_subscriptions: { extra: ['endpoint'] },
   hydration_logs: { extra: ['logged_at', 'amount_ml'] },
   caffeine_logs: { extra: ['logged_at'] },
   // Auth (server-side persist)
