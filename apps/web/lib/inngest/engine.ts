@@ -10,6 +10,8 @@
 
 import type * as D from '@mevabe/domain'
 import { data } from '@/lib/data'
+import { sendEmail } from '@/lib/notify/email'
+import { currentUserEmail } from '@/lib/notify/recipient'
 import { todayStr } from '@/lib/format'
 import {
   hcmParts,
@@ -129,9 +131,27 @@ export async function collectDueNotifications(): Promise<NotificationMessage[]> 
   return out
 }
 
-/** Gửi toàn bộ thông báo đến hạn hôm nay; trả danh sách đã gửi. */
+/** Gửi toàn bộ thông báo đến hạn hôm nay; trả danh sách đã gửi.
+ *  R-notify: in_app/push → hộp thư in-app (push thật sẽ nối Web Push sau);
+ *  email → GOM 1 EMAIL gửi thật qua Resend cho user hiện tại (thiếu key → bỏ qua). */
 export async function runDueNotifications(): Promise<NotificationMessage[]> {
   const due = await collectDueNotifications()
-  await Promise.all(due.map((m) => notifyClient.send(m)))
+  const inApp = due.filter((m) => m.channel !== 'email')
+  const emails = due.filter((m) => m.channel === 'email')
+  await Promise.all(inApp.map((m) => notifyClient.send(m)))
+  if (emails.length) {
+    const to = await currentUserEmail()
+    if (to) {
+      const lines = emails
+        .map((m) => `• ${m.title}${m.detail ? ` — ${m.detail}` : ''}`)
+        .join('\n')
+      const result = await sendEmail({
+        to,
+        subject: `Mẹ & Bé — ${emails.length} nhắc đến hạn hôm nay`,
+        text: `Các nhắc đến hạn hôm nay:\n\n${lines}\n\n— Ứng dụng Mẹ & Bé`,
+      })
+      if (!result.sent) console.warn('[notify] email chưa gửi:', result.reason)
+    }
+  }
   return due
 }

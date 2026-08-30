@@ -29,9 +29,7 @@ export function buildMealEntryInput(confirmed: MealConfirmInput): MealEntryDraft
     meal_type: data.meal_type,
     name: data.name.trim(),
     logged_at: new Date().toISOString(),
-    // `ponytail:` MealPhotoUpload.tsx (UI, ngoài scope Agent C/3) cần truyền
-    // `calories: proposal.calories ?? undefined` vào đây để lưu — nếu không, calories
-    // chỉ là advisory không persist.
+    // calories đã được MealPhotoUpload truyền từ proposal (nợ đã trả — debt-ledger #1).
     calories: data.calories ?? undefined,
     note: data.note?.trim() || undefined,
   }

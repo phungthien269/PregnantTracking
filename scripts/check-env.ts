@@ -80,6 +80,11 @@ const VARS: VarDef[] = [
     note: 'Gateway AI (chat, insight, quiz, OCR)',
   },
   {
+    key: 'RESEND_API_KEY',
+    group: 'notify',
+    note: 'Gửi email thật (kênh email) — thiếu → fallback in-app',
+  },
+  {
     key: 'INGEST_KEY',
     group: 'notify',
     note: 'Inngest signing key',

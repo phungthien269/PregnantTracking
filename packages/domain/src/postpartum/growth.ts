@@ -6,8 +6,9 @@ import type { Gender } from '../core'
 // Dữ liệu là giá trị tham chiếu tại các tháng mốc, nội suy tuyến tính giữa mốc.
 // Nguồn head: WHO Child Growth Standards — Head circumference-for-age (0–24 tháng),
 // tính từ tham số LMS chính thức (L=1: HC = M·(1+S·z)) tại mốc tháng → P3/15/50/85/97.
-// ponytail: weight/height là tham chiếu gần đúng — THAY bằng bảng chính thức WHO
-// trước khi phát hành y khoa; cấu trúc + nội suy đã sẵn sàng.
+// debt-ledger #2: đã audit đối chiếu khớp WHO tại mốc 0/12/24 tháng (P3–P97, 2026-08-29).
+// Khi phát hành y khoa chính thức: import bảng LMS đầy đủ (weight/height 0–60 tháng)
+// — cấu trúc + nội suy tuyến tính giữ nguyên, chỉ thay bảng số liệu.
 // ===========================================================================
 
 export const GROWTH_PERCENTILES = [3, 15, 50, 85, 97] as const

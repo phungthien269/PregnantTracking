@@ -8,7 +8,7 @@
  *  - POST/PUT/PATCH/DELETE: không cache (để trình duyệt fetch bình thường).
  * Bump VERSION khi deploy đổi tài sản tĩnh để phá cache cũ.
  */
-const VERSION = 'v4'
+const VERSION = 'v5'
 const SHELL_CACHE = `mevabe-shell-${VERSION}`
 const STATIC_CACHE = `mevabe-static-${VERSION}`
 const API_CACHE = `mevabe-api-${VERSION}`
@@ -171,6 +171,37 @@ async function navigationRace(request, cacheName, event, options = {}) {
   }
   return winner
 }
+
+// R-notify: nhận Web Push (backend sẽ nối sau — client sẵn sàng từ v5).
+self.addEventListener('push', (event) => {
+  let data = {}
+  try {
+    data = event.data ? event.data.json() : {}
+  } catch {
+    data = { title: 'Mẹ & Bé', body: event.data ? event.data.text() : '' }
+  }
+  event.waitUntil(
+    self.registration.showNotification(data.title ?? 'Mẹ & Bé', {
+      body: data.body ?? 'Bạn có nhắc mới từ Mẹ & Bé.',
+      icon: '/icon.svg',
+      badge: '/icon.svg',
+      data: { url: data.url ?? '/dashboard' },
+    })
+  )
+})
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+  const url = event.notification.data?.url ?? '/dashboard'
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+      for (const client of list) {
+        if (client.url.includes(url) && 'focus' in client) return client.focus()
+      }
+      return self.clients.openWindow(url)
+    })
+  )
+})
 
 self.addEventListener('fetch', (event) => {
   const request = event.request
