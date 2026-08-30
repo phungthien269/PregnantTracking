@@ -115,28 +115,6 @@ async function cacheFirst(request, cacheName) {
   return response
 }
 
-async function networkFirst(request, cacheName, options = {}) {
-  const cache = await caches.open(cacheName)
-  try {
-    const response = await fetch(request)
-    // Chỉ cache response thành công — không cache lỗi (status != 200).
-    if (response && response.ok) cache.put(request, response.clone())
-    return response
-  } catch {
-    const cached = await caches.match(request)
-    if (cached) return cached
-    if (options.fallback) {
-      const cachedFallback = await caches.match(options.fallback)
-      if (cachedFallback) return cachedFallback
-    }
-    // Chưa có cache → trả nội dung offline theo loại (HTML trang / JSON API).
-    return new Response(options.body || null, {
-      status: options.status || 200,
-      headers: options.headers || { 'Content-Type': 'text/html; charset=utf-8' },
-    })
-  }
-}
-
 /* Stale-while-revalidate: cache trả NGAY, mạng làm mới ngầm (nhanh hơn network-first
  * trên mạng chậm; dữ liệu tự cập nhật sau khi fetch ngầm xong). */
 async function staleWhileRevalidate(request, cacheName, event, options = {}) {
