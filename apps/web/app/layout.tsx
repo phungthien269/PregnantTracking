@@ -3,6 +3,7 @@ import { Be_Vietnam_Pro } from 'next/font/google'
 import '@mevabe/ui/tokens.css'
 import './globals.css'
 import { ThemeProvider } from '@/components/theme-provider'
+import { LangProvider } from '@/lib/i18n'
 import { SessionProvider } from '@/lib/auth/session-context'
 
 const beVietnamPro = Be_Vietnam_Pro({
@@ -45,7 +46,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className={`${beVietnamPro.variable} min-h-dvh`}>
         <ThemeProvider>
-          <SessionProvider>{children}</SessionProvider>
+          <LangProvider>
+            <SessionProvider>{children}</SessionProvider>
+          </LangProvider>
         </ThemeProvider>
         {/* PWA: đăng ký service worker bản production (tránh phá HMR khi dev).
             Manifest được Next tự link khi có app/manifest.ts. */}

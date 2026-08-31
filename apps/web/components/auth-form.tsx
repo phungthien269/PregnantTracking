@@ -1,4 +1,6 @@
 'use client'
+import { useLang } from '@/lib/i18n'
+import { LangToggle } from './lang-toggle'
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -8,6 +10,7 @@ import { Button, Field, Input } from '@mevabe/ui'
 
 /** Form đăng nhập / đăng ký dùng chung (ngoài (main), không bị route guard). */
 export function AuthForm({ mode }: { mode: 'login' | 'register' }) {
+  const { t } = useLang()
   const isLogin = mode === 'login'
   const router = useRouter()
   const { session, login, register } = useSession()
@@ -55,17 +58,20 @@ export function AuthForm({ mode }: { mode: 'login' | 'register' }) {
   return (
     <main className="flex min-h-dvh items-center justify-center bg-bg px-4 py-10">
       <div className="w-full max-w-md">
+        <div className="mb-5 flex justify-end">
+          <LangToggle />
+        </div>
         <div className="mb-5 text-center">
           <h1 className="text-2xl font-semibold text-fg">🌸 Mẹ &amp; Bé</h1>
           <p className="mt-1 text-sm text-muted">
-            {isLogin ? 'Đăng nhập để tiếp tục' : 'Tạo tài khoản mới'}
+            {isLogin ? t('auth.loginTitle') : t('auth.registerTitle')}
           </p>
         </div>
 
         <section className="rounded-lg border border-border bg-surface p-5 shadow-card">
           <form onSubmit={submit} className="space-y-4" noValidate>
             {!isLogin && (
-              <Field label="Tên của bạn" htmlFor="name">
+              <Field label={t('auth.name')} htmlFor="name">
                 <Input
                   id="name"
                   autoComplete="name"
@@ -76,7 +82,7 @@ export function AuthForm({ mode }: { mode: 'login' | 'register' }) {
               </Field>
             )}
 
-            <Field label="Email" htmlFor="email">
+            <Field label={t('auth.email')} htmlFor="email">
               <Input
                 id="email"
                 type="email"
@@ -88,7 +94,7 @@ export function AuthForm({ mode }: { mode: 'login' | 'register' }) {
               />
             </Field>
 
-            <Field label="Mật khẩu" htmlFor="password">
+            <Field label={t('auth.password')} htmlFor="password">
               <Input
                 id="password"
                 type="password"
@@ -100,7 +106,7 @@ export function AuthForm({ mode }: { mode: 'login' | 'register' }) {
             </Field>
 
             {!isLogin && (
-              <Field label="Mã mời gia đình (không bắt buộc)" htmlFor="inviteCode">
+              <Field label={t('auth.invite')} htmlFor="inviteCode">
                 <Input
                   id="inviteCode"
                   value={inviteCode}
@@ -127,7 +133,7 @@ export function AuthForm({ mode }: { mode: 'login' | 'register' }) {
             )}
 
             <Button type="submit" size="lg" className="w-full" disabled={submitting}>
-              {submitting ? 'Đang xử lý…' : isLogin ? 'Đăng nhập' : 'Đăng ký'}
+              {submitting ? t('auth.processing') : isLogin ? t('auth.submit') : t('auth.submitRegister')}
             </Button>
 
             <p className="text-center text-sm text-muted">

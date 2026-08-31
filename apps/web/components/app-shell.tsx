@@ -6,10 +6,12 @@ import { useEffect } from 'react'
 import { Badge, Button, cx } from '@mevabe/ui'
 import { dataMode } from '@/lib/data/client-entry'
 import { useSession } from '@/lib/auth/session-context'
+import { useLang, NAV_I18N } from '@/lib/i18n'
 import { BOTTOM_NAV, MAIN_NAV } from './nav'
 import { ThemeToggle } from './theme-toggle'
 import { AskAiFab } from './ask-ai-fab'
 import { NavProgress } from './nav-progress'
+import { LangToggle } from './lang-toggle'
 
 function isActive(pathname: string, href: string): boolean {
   return pathname === href || (href !== '/' && pathname.startsWith(href))
@@ -20,6 +22,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
   const { session, logout } = useSession()
+  const { t } = useLang()
   const userLabel = session ? session.name ?? session.email : null
 
   const handleLogout = async () => {
@@ -53,10 +56,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <Link href="/dashboard" className="flex items-center gap-2 px-5 py-5 text-lg font-semibold text-fg">
           <span aria-hidden>🌸</span> Mẹ &amp; Bé
         </Link>
-        <nav className="flex-1 overflow-y-auto px-3 pb-4" aria-label="Điều hướng chính">
+        <nav className="flex-1 overflow-y-auto px-3 pb-4" aria-label={t('shell.navMain')}>
           {MAIN_NAV.map((group) => (
             <div key={group.label} className="mt-4">
-              <p className="px-3 text-[11px] font-semibold uppercase tracking-wide text-muted">{group.label}</p>
+              <p className="px-3 text-[11px] font-semibold uppercase tracking-wide text-muted">{t(NAV_I18N[group.items[0]?.href ?? '']?.group ?? group.label as never)}</p>
               <ul className="mt-1 space-y-0.5">
                 {group.items.map((item) => (
                   <li key={item.href}>
@@ -71,7 +74,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       )}
                     >
                       <span aria-hidden>{item.icon}</span>
-                      {item.label}
+                      {t(NAV_I18N[item.href]?.label ?? item.label as never)}
                     </Link>
                   </li>
                 ))}
@@ -90,7 +93,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </Button>
             </div>
           ) : (
-            <Badge>{dataMode === 'local' ? 'Chế độ demo' : 'Đã kết nối'}</Badge>
+            <Badge>{dataMode === 'local' ? t('shell.demoMode') : t('shell.connected')}</Badge>
           )}
         </div>
       </aside>
@@ -101,11 +104,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <Link href="/dashboard" className="flex items-center gap-2 font-semibold text-fg md:hidden">
             <span aria-hidden>🌸</span> Mẹ &amp; Bé
           </Link>
-          <p className="hidden text-sm text-muted md:block">Đồng hành thai kỳ cùng gia đình Việt</p>
+          <p className="hidden text-sm text-muted md:block">{t('shell.tagline')}</p>
           <div className="flex items-center gap-1.5">
             <Link
               href="/thong-bao"
-              aria-label="Thông báo"
+              aria-label={t('shell.notifications')}
               className="flex h-9 w-9 items-center justify-center rounded-md text-muted transition-colors hover:bg-surface-muted hover:text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
             >
               <span aria-hidden className="text-base">
@@ -114,7 +117,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </Link>
             <Link
               href="/cai-dat"
-              aria-label="Cài đặt"
+              aria-label={t('shell.settings')}
               className="flex h-9 w-9 items-center justify-center rounded-md text-muted transition-colors hover:bg-surface-muted hover:text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
             >
               <span aria-hidden className="text-base">
@@ -123,9 +126,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </Link>
             {session && (
               <Button variant="ghost" size="sm" className="ml-1 md:hidden" onClick={handleLogout}>
-                Đăng xuất
+                {t('shell.logout')}
               </Button>
             )}
+            <LangToggle />
             <ThemeToggle />
           </div>
         </header>
@@ -135,7 +139,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {/* Bottom nav mobile */}
       <nav
         className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface md:hidden"
-        aria-label="Điều hướng nhanh"
+        aria-label={t('shell.navQuick')}
       >
         <ul className="grid grid-cols-6">
           {BOTTOM_NAV.map((item) => (
