@@ -9,8 +9,9 @@ và chăm bé 0–24 tháng (bú, ngủ, tã, tăng trưởng, mốc phát tri�
 5 accent tùy chỉnh. Chi tiết sản phẩm: [`outputs/implementation-plan.md`](../outputs/implementation-plan.md).
 
 > Tài liệu kỹ thuật: kiến trúc, API ref, runbook, checklist nghiệm thu tại `orchestration/docs/`.
-> **Trạng thái (2026-08-30): ĐÃ DEPLOY PRODUCTION** — dữ liệu thật trên Supabase,
-> auth Supabase, Web Push, email (Resend), offline PWA, CI xanh.
+> **Trạng thái (2026-08-30): ĐÃ DEPLOY PRODUCTION + EMAIL/PUSH SỐNG** — Supabase
+> (auth + data + storage + RLS), Web Push (VAPID), Email qua Resend (key đã cấu hình),
+> offline PWA, i18n VI/EN (khung UI), CI xanh. LCP 2.8–3.7s · CLS 0 (mobile 4G).
 >
 > [![CI](https://github.com/phungthien269/PregnantTracking/actions/workflows/ci.yml/badge.svg)](https://github.com/phungthien269/PregnantTracking/actions/workflows/ci.yml)
 > 🌐 **Bản chạy thử:** https://web-sage-omega-93.vercel.app — đăng nhập `me@demo.vn` / `demo1234`
