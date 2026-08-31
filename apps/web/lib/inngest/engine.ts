@@ -67,14 +67,16 @@ export async function collectDueNotifications(): Promise<NotificationMessage[]> 
     data.getNotificationPreferences().catch(() => []),
   ])
 
+  console.log('[engine-debug] prefs:', prefs.length, '| email prefs:', prefs.filter((x) => x.channel === 'email').length, '| mode cookies có sẵn')
   const out: NotificationMessage[] = []
 
   // 1. Reminder theo lịch (vitamin, tiêm chủng…) — tái dùng notification-due.
   for (const r of reminders) {
     if (!r.active) continue
     if (!isDueToday(r.scheduled_at, r.frequency, today, todayParts)) continue
+    // R-notify: kênh tổng (công tắc /thong-bao) là authority — bỏ gate r.channels
+    // (không có UI chỉnh per-reminder; gate cũ khiến email/push KHÔNG BAO GIỜ gửi).
     for (const channel of enabledChannels(prefs, KIND_GROUP.reminder)) {
-      if (!r.channels.includes(channel)) continue
       out.push(
         handleReminderDue({
           reminderId: r.id,
