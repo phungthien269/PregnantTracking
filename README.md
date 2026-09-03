@@ -1,185 +1,151 @@
-# Mẹ & Bé
+# Mẹ & Bé — Pregnancy, Nutrition & Baby Care for Vietnamese Families
 
-Web app thai kỳ, dinh dưỡng và chăm bé cho gia đình Việt — monorepo TypeScript.
+[![CI](https://github.com/phungthien269/PregnantTracking/actions/workflows/ci.yml/badge.svg)](https://github.com/phungthien269/PregnantTracking/actions/workflows/ci.yml)
 
-Đồng hành từ mang thai (tuần thai, dinh dưỡng, triệu chứng, lịch khám) đến sau sinh
-và chăm bé 0–24 tháng (bú, ngủ, tã, tăng trưởng, mốc phát triển, tiêm chủng), kèm
-điều phối gia đình (task, mua sắm, ngân sách, reminder) và thư viện học cùng con
-(import PDF/EPUB/URL, quiz, hỏi đáp). UI tiếng Việt có dấu, WCAG AA, dark mode +
-5 accent tùy chỉnh. Chi tiết sản phẩm: [`outputs/implementation-plan.md`](../outputs/implementation-plan.md).
+A full-stack web app supporting mothers from pregnancy (weekly fetal development,
+nutrition, symptoms, checkup schedule) through postpartum and baby care 0–24 months
+(feeding, sleep, diapers, growth tracking, milestones, vaccinations) — plus family
+coordination (tasks, shopping, budget, reminders), a learning library (PDF/EPUB/URL
+import, quizzes, Q&A), and an AI assistant grounded in the family's own library.
 
-> Tài liệu kỹ thuật: kiến trúc, API ref, runbook, checklist nghiệm thu tại `orchestration/docs/`.
-> **Trạng thái (2026-08-30): ĐÃ DEPLOY PRODUCTION + EMAIL/PUSH SỐNG** — Supabase
-> (auth + data + storage + RLS), Web Push (VAPID), Email qua Resend (key đã cấu hình),
-> offline PWA, i18n VI/EN (khung UI), CI xanh. LCP 2.8–3.7s · CLS 0 (mobile 4G).
->
-> [![CI](https://github.com/phungthien269/PregnantTracking/actions/workflows/ci.yml/badge.svg)](https://github.com/phungthien269/PregnantTracking/actions/workflows/ci.yml)
-> 🌐 **Bản chạy thử:** https://web-sage-omega-93.vercel.app — đăng nhập `me@demo.vn` / `demo1234`
-> (bố: `bo@demo.vn` — hoặc tham gia gia đình bằng mã mời `MEVABE`)
->
-> Tiến độ chi tiết: `orchestration/status/project.md`.
+**Live demo:** https://pregnanttracking.vercel.app
+Log in with `cuti3bqn@gmail.com` / `demo1234` (mom) or `bo@demo.vn` / `demo1234` (dad) —
+or create a new account and join the demo family with invite code `MEVABE`.
 
-## Nhanh
+> **Status (2026-08-31): deployed to production.** Supabase (Postgres + Auth +
+> Storage + RLS), Web Push notifications, real email delivery via Resend, offline
+> PWA, VI/EN UI toggle, and a green CI pipeline.
+> Measured on simulated mobile 4G: LCP 2.8–3.7s · TBT ~100ms · **CLS 0**.
+
+## Quick start
 
 ```bash
 pnpm install
-pnpm dev          # web ở http://localhost:3000 (cloud nếu có env Supabase)
-pnpm typecheck    # tsc toàn repo (turbo)
+pnpm dev          # web at http://localhost:3000 (cloud mode when Supabase env is set)
+pnpm typecheck    # tsc across the monorepo (turbo)
 pnpm lint         # eslint
 pnpm build        # next build (turbo)
-bash scripts/smoke.sh --rebuild   # 65 kiểm thử nghiệm thu (chế độ local)
+bash scripts/smoke.sh --rebuild   # 65 acceptance checks (local data mode)
 ```
-Health check: `GET /api/v1/health` — `{ status, mode, time }`.
 
-Yêu cầu: Node ≥ 20, pnpm ≥ 11 (bản đang dùng: `pnpm@11.17.0`).
+Health check: `GET /api/v1/health` → `{ status, mode, time }`.
+Requirements: Node ≥ 20, pnpm ≥ 11 (tested with `pnpm@11.17.0`).
 
-Chưa có env Supabase → app chạy **chế độ demo** với dữ liệu mock tiếng Việt (qua
-interface `DataApi`). Có env Supabase → cùng interface đó dùng backend thật. Không
-cần cấu hình gì để chạy thử.
+**Two data modes, one interface.** Without Supabase env vars the app runs a local
+SQLite demo (seeded Vietnamese data); with them, the same `DataApi` interface talks
+to the real Supabase backend (RLS-enforced). Nothing to configure to try it out.
 
-## Kiểm tra
+## Tests
 
-| Lệnh | Việc |
+| Command | What it does |
 |---|---|
-| `./scripts/test-domain.sh` | Chạy bộ test domain/ui (61 test / 6 file, không cần vitest) |
-| `node scripts/check-env.ts` | Kiểm tra biến môi trường: biến nào OK/THIẾU, app chạy mock hay thật (exit 0 kể cả khi thiếu) |
-| `./scripts/smoke.sh` | Chưa có — smoke test hiện chạy thủ công (mục Smoke test bên dưới) |
+| `bash scripts/test-domain.sh` | Domain/UI unit checks (8 files, no vitest needed) |
+| `bash scripts/test-web.sh` | Web layer checks (39 files) |
+| `bash scripts/smoke.sh --rebuild` | 65 end-to-end acceptance checks against a production build |
+| `node scripts/check-env.ts` | Environment audit: which vars are set, which mode the app will run |
 
-Từ thư mục `code/`:
-
-```bash
-./scripts/test-domain.sh        # PASS 6 file / 61 test, exit 0
-node scripts/check-env.ts       # in bảng 7 biến + tóm tắt MOCK/THẬT
-```
-
-## Cấu trúc
+## Architecture
 
 ```
-apps/web          Next.js App Router (web responsive)
-apps/ios          SwiftUI companion (source + guide — cần Xcode, xem phần iOS)
-packages/domain   Zod schemas + business rules (thuần, không phụ thuộc React)
+apps/web          Next.js App Router (responsive web)
+apps/ios          SwiftUI companion (source + guide — needs Xcode, see iOS section)
+packages/domain   Zod schemas + business rules (pure, React-free)
 packages/ui       Design tokens + component primitives
-supabase/         Migrations + seed (PostgreSQL, RLS) + README kết nối thật
-scripts/          test-domain.sh (test), check-env.ts (kiểm tra env)
+supabase/         Migrations + seed (PostgreSQL, RLS)
+scripts/          smoke.sh · test-*.sh · check-env.ts · supabase-provision.sh
 ```
 
-Chi tiết:
+Key seams:
 
-| Đường dẫn | Nội dung |
+| Path | What lives there |
 |---|---|
-| `packages/domain/src/core.ts` | Enum chuẩn + type nền (khế ước dùng chung, bất biến) |
-| `packages/domain/src/<module>/` | Schema Zod từng nhóm (family, pregnancy, nutrition, postpartum, coordination, content, ai) |
-| `packages/ui/src/tokens.css\|ts` | Design tokens (màu, radius, shadow, accent, dark mode) |
-| `packages/ui/src/components/` | UI primitives (Button, Card, Badge, Input, …) |
-| `apps/web/app/**` | Pages (App Router); `app/api/**` là route handler `/api/v1` |
-| `apps/web/app/manifest.ts` + `public/sw.js` | PWA: manifest + service worker offline (production) |
-| `apps/web/components/**` | Client components cấp app |
-| `apps/web/lib/data/api.ts` | Interface `DataApi` (seam backend ↔ frontend, bất biến) |
-| `apps/web/lib/data/mock.ts` | DataApi mock + seed (chế độ demo) |
-| `apps/web/lib/data/supabase.ts` | DataApi backend thật |
-| `apps/web/lib/data/index.ts` | Resolver: chọn mock / supabase theo env |
-| `apps/web/lib/ai/` | Gateway OpenRouter (chat, insight, quiz-gen, symptom-triage, sources) |
-| `apps/web/lib/library/` | Import PDF/EPUB/URL → chunk → stage → citations → quiz |
-| `apps/web/lib/meals-photo/` | Ảnh bữa ăn → nhận diện (AI/heuristic) → đề xuất |
-| `apps/web/lib/ocr/` | OCR chỉ số khám (regex + seam vision AI) |
-| `apps/web/lib/health-sync.ts` | Đồng bộ HealthKit (iOS), dedupe theo epoch |
-| `apps/web/lib/question-reports.ts` | Báo lỗi câu hỏi quiz (mock + Supabase RLS) |
-| `apps/web/lib/inngest/` | Notification seam (Inngest HTTP hoặc fallback in-app) |
-| `apps/web/middleware.ts` | Rate-limit (30/60/120) + CSRF origin-check cho `/api/v1/*` |
-| `apps/web/next.config.ts` | CSP + security headers |
-| `supabase/migrations/*.sql` | Schema + RLS (10 migrations `0001`–`0010`) |
-| `supabase/seed/seed.sql` | Seed SQL + 2 tài khoản demo (`me@demo.vi` / `bo@demo.vi`) |
-| `supabase/README.md` | **Runbook kết nối thật từng bước** (db push, seed, bucket, user, RLS check) |
+| `packages/domain/src/core.ts` | Canonical enums + base types (immutable contract) |
+| `apps/web/lib/data/api.ts` | `DataApi` interface (backend ↔ frontend seam, immutable) |
+| `apps/web/lib/data/index.ts` | Resolver: local SQLite (demo) vs Supabase (cloud) by env |
+| `apps/web/lib/data/local.ts` | SQLite implementation (persistent demo, per-user scoping) |
+| `apps/web/lib/data/supabase.ts` | Supabase implementation (RLS via request-scoped client) |
+| `apps/web/lib/ai/` | OpenRouter gateway (chat with persisted history, insights, quiz-gen, symptom triage, citations) |
+| `apps/web/lib/library/` | PDF/EPUB/URL → chunk → stage tags → citations → quiz |
+| `apps/web/lib/meals-photo/` | Meal photos → AI/heuristic recognition → confirm-before-save |
+| `apps/web/lib/notify/` | Email (Resend/SMTP) + Web Push (VAPID, `web-push`) |
+| `apps/web/lib/inngest/` | Notification engine — due-today scan, per-group/channel preferences |
+| `apps/web/middleware.ts` | Rate limiting (30/60/120 rpm) + CSRF origin check on `/api/v1/*` |
+| `supabase/migrations/*.sql` | Schema + RLS policies (16 migrations) |
+| `supabase/seed/seed.sql` | Seed data (demo family, pregnancy, baby, meals, tasks, chat) |
 
-Convention: alias `@/*` → `apps/web/*`; mọi bảng gia đình có `family_id`, mục riêng
-có `private_owner_id`; API trả `{ data }` hoặc `{ error: { code, message, details } }`;
-input biên giới validate bằng Zod.
+Conventions: `@/*` → `apps/web/*`; every family-scoped table carries `family_id`
+(plus `private_owner_id` for private rows); API envelope is `{ data }` or
+`{ error: { code, message, details } }`; all boundary input validated with Zod.
 
-## Tính năng chính
+## Features
 
-- **AI (OpenRouter)**: hỏi đáp, phân tích triệu chứng (triage cứng trước), sinh quiz
-  từ nội dung import. Không có key → fallback nội dung nguồn / heuristic, app không lỗi.
-- **Thư viện học cùng con**: import PDF/EPUB/URL → chunk + citations → stage tags → sinh quiz.
-- **Ảnh bữa ăn**: tải ảnh → AI nhận diện (hoặc heuristic theo tên file) → trả đề xuất
-  để **xác nhận trước khi lưu** (confirm-before-save).
-- **OCR chỉ số khám**: chụp/dán tờ khám → trích số đo → xác nhận → ghi biểu đồ (2 bước).
-- **Báo lỗi quiz**: mỗi câu hỏi có nút báo lỗi → `question_reports` + route moderation.
-- **Health-sync**: đồng bộ HealthKit từ iOS, dedupe không ghi đè dữ liệu nhập tay.
-- **Notification**: nhắc lịch khám/task/mốc tuần/reminder; Inngest seam + fallback in-app.
-- **Export & quyền riêng tư**: xuất CSV/PDF, xoá toàn bộ dữ liệu gia đình.
-- **PWA offline**: manifest + service worker, offline shell 8 trang chính (production).
-- **Bảo mật**: CSP + security headers, rate-limit 30/60/120, CSRF origin-check, RLS.
-- **WCAG AA**: audit + fix (tương phản, focus trap, bàn phím/ARIA, skip-link).
+- **Pregnancy timeline** — weekly fetal development, nutrition focus, checkup
+  milestones (WHO/ACOG/NHS references), trimester-aware insights.
+- **Baby care 0–24m** — feeding/sleep/diaper logs, growth charts with WHO
+  percentile bands (linear interpolation between anchor months), vaccination
+  schedule (TCMR circular 52/2025), milestones.
+- **Family coordination** — tasks, shopping (auto-generated from meal ingredients),
+  budget, reminders, per-group/per-channel notification preferences.
+- **AI assistant (OpenRouter)** — chat grounded in the family's library with
+  persisted history; symptom triage (hard safety gates first); quiz generation.
+  Falls back to library content when the AI provider is unavailable.
+- **Learning library** — import PDF/EPUB/URL → chunking with citations → stage
+  tags → auto-generated quizzes with per-question error reports.
+- **Meal photos** — upload → AI recognition → confirm-before-save; stored in
+  Supabase Storage.
+- **Checkup OCR** — photo of a medical report → extract measurements → confirm →
+  charted.
+- **Notifications that really deliver** — due-today engine honors per-group,
+  per-channel preferences; **email via Resend**; **Web Push** via VAPID
+  (`web-push`), with dead-endpoint cleanup (404/410).
+- **Offline PWA** — manifest + service worker: stale-while-revalidate for API
+  GETs, navigation race (network ≤ 800ms, then cached shell), offline fallback.
+- **Security** — CSP + security headers, rate limiting, CSRF origin check, RLS
+  on every family-scoped table, service-role keys server-only.
+- **Performance** — route skeletons matching page layouts (CLS 0), View
+  Transitions-style page enter, per-request read memoization, dynamic imports
+  for heavy components, 6 SQLite indexes + Supabase indexes.
+- **Accessibility** — WCAG AA: contrast, focus traps, keyboard/ARIA, skip links,
+  `prefers-reduced-motion` honored everywhere.
 
-## Cấu hình backend thật (Supabase)
+## Supabase setup
 
-Làm theo **`supabase/README.md`** — runbook từng bước: cài Supabase CLI → tạo
-project → `supabase link` + `db push` (migrations 0001–0010) → seed → tạo storage
-bucket (`meal-photos`, `documents`) → tạo user → điền env → kiểm tra.
-
-Tóm tắt:
+Follow `supabase/README.md` for the full runbook. Short version:
 
 ```bash
-# 1. Tạo project tại supabase.com; lấy URL + anon key (Settings → API).
-# 2. Áp migrations + seed:
+# 1. Create a project at supabase.com; grab URL + anon key (Settings → API).
+# 2. Apply migrations + seed:
 supabase link --project-ref <ref>
-supabase db push                    # migrations 0001–0010
-#    seed: dán supabase/seed/seed.sql vào SQL Editor (hoặc db reset local)
-# 3. Tạo bucket + policy (mục 4 supabase/README.md), tạo user (mục 5).
-# 4. Gắn env vào app:
+supabase db push                    # migrations 0001–0016 (incl. RLS policies, storage, push subs)
+bash scripts/supabase-provision.sh  # seed data + demo users (Admin API — never raw-INSERT auth.users)
+# 3. Set app env:
 cp apps/web/.env.example apps/web/.env.local
-#    điền NEXT_PUBLIC_SUPABASE_URL + NEXT_PUBLIC_SUPABASE_ANON_KEY (bắt buộc);
-#    SUPABASE_SERVICE_ROLE_KEY, OPENROUTER_API_KEY, INGEST_KEY/INGEST_URL (tùy chọn → fallback)
-node scripts/check-env.ts           # xác nhận trạng thái từng biến
-pnpm dev
+#    NEXT_PUBLIC_SUPABASE_URL + NEXT_PUBLIC_SUPABASE_ANON_KEY (required for cloud mode)
+#    SUPABASE_SERVICE_ROLE_KEY (register/bootstrap) · OPENROUTER_API_KEY (AI)
+#    RESEND_API_KEY (email) · VAPID_PUBLIC_KEY/VAPID_PRIVATE_KEY (web push)
+node scripts/check-env.ts           # confirm each variable's status
 ```
 
-Có đủ 2 biến Supabase → app bỏ chế độ demo, dùng backend thật (kiểm tra `dataMode`
-trong `lib/data/index.ts`). Thiếu key → app vẫn chạy mock/fallback, không lỗi.
+Demo users are provisioned via the Supabase **Admin API** (never raw-INSERT into
+`auth.users` — it corrupts GoTrue state; see `scripts/supabase-provision.sh`).
 
-## Các lệnh
+## Deployment (Vercel)
 
-| Lệnh | Việc |
-|---|---|
-| `pnpm dev` | Chạy web ở http://localhost:3000 |
-| `pnpm build` | Build toàn monorepo (Next) |
-| `pnpm typecheck` | Typecheck toàn repo (turbo) |
-| `pnpm lint` | Lint toàn repo |
-| `./scripts/test-domain.sh` | Bộ test domain/ui (61 test, không cần vitest) |
-| `node scripts/check-env.ts` | Kiểm tra biến môi trường mock/thật |
+The repo deploys as a monorepo with **Root Directory = `apps/web`** (set in the
+Vercel project settings) and a `vercel.json` that pins `pnpm install`. Required
+env vars are listed in `apps/web/.env.example` — remember `NEXT_PUBLIC_*` values
+are inlined at build time, so changing them requires a rebuild.
 
-`pnpm install` đã được orchestrator lo — không cần `pnpm add` dependency mới ngoài
-danh sách đã cài (zod, react, next, recharts, date-fns, clsx, tailwind-merge,
-@supabase/supabase-js).
+## iOS companion
 
-## Smoke test (thủ công)
-
-Chưa có `scripts/smoke.sh` tự động — cách hiện tại:
-
-1. `pnpm build && pnpm start` (hoặc `pnpm dev`) với server ở cổng riêng.
-2. Gọi thử các route chính: `/`, `/manifest.webmanifest`, `/sw.js`,
-   `GET /api/v1/notifications`, `POST /api/v1/health-sync`, `POST /api/v1/measurements/ocr`,
-   `POST /api/v1/meals/photo`, `POST /api/v1/quizzes/report`, `GET /api/v1/question-reports`.
-3. Lưu ý middleware: mutation có `Origin` lệch Host → **403**; vượt ngưỡng rate-limit
-   → **429** (AI 30/phút, mutation 60/phút, read 120/phút).
-4. Tham chiếu route đầy đủ: `orchestration/docs/api-reference.md`.
-
-## Phạm vi (theo ADR-004)
-
-Không xây: bộ đếm cơn gò, ứng dụng Android, đặt lịch bệnh viện trực tiếp, chia sẻ
-thư viện ra công khai. Chỉ hai vợ chồng (2 tài khoản) truy cập dữ liệu gia đình.
-
-## iOS
-
-`apps/ios` có source SwiftUI hoàn chỉnh (Agent 8): auth/Keychain/biometric,
-dashboard, ghi nhanh offline (mã hóa AES-GCM), HealthKit 2 chiều, push — kèm
-`README.md` + `project.yml` (xcodegen). Để chạy trên máy có Xcode:
+`apps/ios` contains a SwiftUI implementation: auth + Keychain + biometrics,
+dashboard, offline quick-entry (AES-GCM), two-way HealthKit, push. To run on a
+Mac with Xcode:
 
 ```bash
 cd apps/ios
 xcodegen generate
-open Mevabe.xcodeproj     # chọn simulator rồi Run
+open Mevabe.xcodeproj     # pick a simulator and Run
 ```
 
-Chưa có Xcode → code iOS vẫn typecheck bằng `swiftc -typecheck` (đã chạy exit 0);
-phần HealthKit/push cần device thật khi test.
+Without Xcode, the sources still typecheck via `swiftc -typecheck`.
