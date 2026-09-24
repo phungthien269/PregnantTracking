@@ -1,0 +1,34 @@
+# Keep-alive — giữ Supabase free tier không bị tạm ngừng (INACTIVE).
+# Supabase pause dự án free sau ~7 ngày không có activity; workflow này tạo
+# 1 lượt query DB mỗi ngày (qua PostgREST) + ping app trên Vercel.
+# Chạy 09:00 giờ VN hằng ngày. Cũng chạy được thủ công (workflow_dispatch).
+name: Keep-alive
+
+on:
+  schedule:
+    - cron: '0 2 * * *' # UTC 02:00 = 09:00 giờ Việt Nam
+  workflow_dispatch:
+
+concurrency:
+  group: keepalive
+  cancel-in-progress: false
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase PostgREST (giữ database active)
+        run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" \
+            "${{ secrets.SUPABASE_URL }}/rest/v1/families?select=id&limit=1" \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}")
+          echo "Supabase REST: $code"
+          test "$code" = "200"
+
+      - name: Ping app trên Vercel (giữ server warm)
+        run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" \
+            "https://pregnanttracking.vercel.app/api/v1/health")
+          echo "App health: $code"
+          test "$code" = "200"
