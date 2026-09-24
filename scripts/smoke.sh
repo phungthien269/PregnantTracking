@@ -24,6 +24,9 @@ export NEXT_PUBLIC_SUPABASE_URL=""
 export NEXT_PUBLIC_SUPABASE_ANON_KEY=""
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+# DB sạch cho mỗi lần smoke (dữ liệu test cũ làm nhiễu notification prefs).
+rm -f "$ROOT/apps/web/.data/mevabe.db"*
 WEB="$ROOT/apps/web"
 NEXT_BIN="$WEB/node_modules/.bin/next"
 PORT="${PORT:-3199}"
@@ -98,7 +101,7 @@ jget() {
 # jnotif_reminder_count — đếm thông báo kind=reminder trong data.notifications
 # (bỏ qua inbox — hộp thư lưu các thông báo đã gửi ở GET trước).
 jnotif_reminder_count() {
-  node -e 'const d=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));console.log((d.data&&d.data.notifications||[]).filter(x=>x&&x.kind==="reminder").length)' "$REQ_BODY"
+  node -e 'const d=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));console.log((d.data&&d.data.notifications||[]).filter(x=>x&&x.kind==="reminder"&&x.channel==="in_app").length)' "$REQ_BODY"
 }
 
 # ---------------------------------------------------------------------------
