@@ -129,15 +129,6 @@ function resolveVisionModel(model?: string): string {
 /** Lỗi TẠM THỜI của model hiện tại → đáng thử model kế trong chuỗi dự phòng:
  * 429 rate-limit, 5xx upstream, chi tiết "Provider returned error", timeout/network.
  * Lỗi khác (400 sai tham số, EMPTY…) là lỗi cứng của request → ném ngay. */
-function isRetryableModelError(e: unknown): boolean {
-  const msg = e instanceof Error ? e.message : String(e)
-  return (
-    /^OPENROUTER_(429|5\d\d)\b/.test(msg) ||
-    /^OPENROUTER_(TIMEOUT|NETWORK)\b/.test(msg) ||
-    /provider returned error/i.test(msg)
-  )
-}
-
 /** Mã lỗi ngắn để log, vd "429", "TIMEOUT". */
 function briefError(e: unknown): string {
   const msg = e instanceof Error ? e.message : String(e)
@@ -225,22 +216,29 @@ async function postOpenRouterChain(
   stripFences = false,
 ): Promise<AiReply> {
   let lastError: unknown
-  for (let i = 0; i < chain.length; i++) {
-    try {
-      const reply = await postOpenRouter({ ...base, model: chain[i] }, retryNoJson, stripFences)
-      // Model reasoning/free thi thoảng trả content RỖNG (nuốt hết token vào suy luận)
-      // → coi như lỗi và thử model kế trong chuỗi.
-      if (!reply.content?.trim()) {
-        lastError = new Error(`OPENROUTER_EMPTY — ${chain[i]} trả phản hồi rỗng`)
-        console.warn(`[ai] model ${chain[i]} trả rỗng → thử model kế`)
-        continue
+  // 429 của model free là theo cửa sổ phút → quét chuỗi lần 1, chờ 2.5s, quét lần 2.
+  for (let attempt = 0; attempt < 2; attempt++) {
+    if (attempt === 1) {
+      console.warn('[ai] quét chuỗi model lần 2 sau 2.5s chờ cửa sổ rate-limit')
+      await new Promise((r) => setTimeout(r, 2500))
+    }
+    for (let i = 0; i < chain.length; i++) {
+      try {
+        const reply = await postOpenRouter({ ...base, model: chain[i] }, retryNoJson, stripFences)
+        // Model reasoning/free thi thoảng trả content RỖNG (nuốt hết token vào suy luận)
+        // → coi như lỗi và thử model kế trong chuỗi.
+        if (!reply.content?.trim()) {
+          lastError = new Error(`OPENROUTER_EMPTY — ${chain[i]} trả phản hồi rỗng`)
+          console.warn(`[ai] model ${chain[i]} trả rỗng → thử model kế`)
+          continue
+        }
+        return reply
+      } catch (e) {
+        lastError = e
+        const next = chain[i + 1]
+        console.warn(`[ai] model ${chain[i]} lỗi ${briefError(e)} → ${next ? `thử ${next}` : 'hết chuỗi'}`)
+        if (!next) break
       }
-      return reply
-    } catch (e) {
-      lastError = e
-      const next = chain[i + 1]
-      if (!next || !isRetryableModelError(e)) throw e
-      console.warn(`[ai] model ${chain[i]} lỗi ${briefError(e)} → thử ${next}`)
     }
   }
   throw lastError instanceof Error

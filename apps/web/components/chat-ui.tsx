@@ -122,11 +122,19 @@ export function ChatUI({ initialSessions, initialSessionId, initialMessages }: C
 
     setPending(true)
     try {
-      const res = await fetch('/api/v1/ai/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text, sessionId: activeSessionId }),
-      })
+      // R-notify UX: model free xoay phiên bận (429) → tự thử lại 1 lần sau 900ms
+      // trước khi báo lỗi, để lỗi tạm thời không hiện ra cho mẹ.
+      const postChat = () =>
+        fetch('/api/v1/ai/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: text, sessionId: activeSessionId }),
+        })
+      let res = await postChat()
+      if (!res.ok) {
+        await new Promise((r) => setTimeout(r, 900))
+        res = await postChat()
+      }
       const json = await res.json().catch(() => null)
       if (!res.ok || !json?.data) throw json
       const d = json.data
