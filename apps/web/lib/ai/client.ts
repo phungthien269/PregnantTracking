@@ -5,6 +5,9 @@
 // - Hỗ trợ cả text (chatCompletion) và ảnh (visionCompletion) theo chuẩn OpenAI
 //   multimodal: content: [{type:"text", text}, {type:"image_url", image_url:{url}}].
 //   Vision dùng model FREE có đọc ảnh (Gemma 4 26B) — không tốn phí.
+// - Model chính lỗi tạm thời (429/5xx/provider error) → tự thử lần lượt chuỗi
+//   AI_FALLBACK_MODELS (env, mặc định google/gemini-2.0-flash); AiReply.model là
+//   model ĐÃ dùng thành công; tất cả fail → ném lỗi của lần thử cuối.
 // ===========================================================================
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions'
@@ -19,10 +22,25 @@ const AI_TIMEOUT_MS = 60_000
  * reasoning (VD nemotron-nano-9b, ling-flash): thi thoảng dùng hết max_tokens
  * cho phần suy luận → content rỗng. */
 export const AI_MODELS = {
-  default: 'google/gemma-4-26b-a4b-it:free',
-  fallback: 'google/gemini-2.0-flash',
+  // 2026-09-03: test toàn bộ 20 model free — gemma-4-26b/4-31b trả RỖNG,
+  // qwen 429; nemotron-3-ultra + cohere/north-mini trả lời đúng trọng tâm tiếng Việt.
+  default: 'nvidia/nemotron-3-ultra-550b-a55b:free',
+  fallback: 'cohere/north-mini-code:free',
   vision: 'google/gemma-4-26b-a4b-it:free',
 } as const
+
+/** Chuỗi model dự phòng từ env AI_FALLBACK_MODELS (comma-separated, giữ thứ tự).
+ * Không set/env rỗng → [AI_MODELS.fallback]. Bỏ phần tử trống + loại lặp. */
+export function aiFallbackModels(): string[] {
+  const raw = process.env.AI_FALLBACK_MODELS?.trim()
+  const list = raw ? raw.split(',') : [AI_MODELS.fallback]
+  return [...new Set(list.map((s) => s.trim()).filter(Boolean))]
+}
+
+/** Chuỗi thử lần lượt: model chính trước, sau đó các model dự phòng khác nó. */
+function modelChain(primary: string): string[] {
+  return [primary, ...aiFallbackModels().filter((m) => m !== primary)]
+}
 
 export type AiRole = 'system' | 'user' | 'assistant'
 export interface AiMessage {
@@ -70,7 +88,10 @@ export type MultimodalContentPart =
   | { type: 'image_url'; image_url: { url: string } }
 
 export function isAllowedModel(model: string): boolean {
-  return (Object.values(AI_MODELS) as string[]).includes(model)
+  return (
+    (Object.values(AI_MODELS) as string[]).includes(model) ||
+    aiFallbackModels().includes(model) // model dự phòng từ env cũng hợp lệ
+  )
 }
 
 /** API key từ env (server-side). Trả null khi chưa cấu hình → nơi gọi dùng fallback. */
@@ -103,6 +124,25 @@ function resolveModel(model?: string): string {
  * (ling-flash không chắc hỗ trợ ảnh → luôn dùng model vision riêng). */
 function resolveVisionModel(model?: string): string {
   return model && isAllowedModel(model) ? model : AI_MODELS.vision
+}
+
+/** Lỗi TẠM THỜI của model hiện tại → đáng thử model kế trong chuỗi dự phòng:
+ * 429 rate-limit, 5xx upstream, chi tiết "Provider returned error", timeout/network.
+ * Lỗi khác (400 sai tham số, EMPTY…) là lỗi cứng của request → ném ngay. */
+function isRetryableModelError(e: unknown): boolean {
+  const msg = e instanceof Error ? e.message : String(e)
+  return (
+    /^OPENROUTER_(429|5\d\d)\b/.test(msg) ||
+    /^OPENROUTER_(TIMEOUT|NETWORK)\b/.test(msg) ||
+    /provider returned error/i.test(msg)
+  )
+}
+
+/** Mã lỗi ngắn để log, vd "429", "TIMEOUT". */
+function briefError(e: unknown): string {
+  const msg = e instanceof Error ? e.message : String(e)
+  const m = msg.match(/^OPENROUTER_[A-Z0-9_]+/)
+  return m ? m[0].replace(/^OPENROUTER_/, '') : msg.slice(0, 60)
 }
 
 /** Kiểm tra provider từ chối response_format (JSON mode): model không hỗ trợ
@@ -174,25 +214,58 @@ function stripCodeFences(s: string): string {
   return m?.[1]?.trim() ?? s
 }
 
+/** Gọi postOpenRouter lần lượt theo chuỗi model: model chính trước; chỉ khi lỗi
+ * TẠM THỜI (429/5xx/provider error/timeout) mới thử model kế. Mỗi lần thử giữ
+ * nguyên timeout AI_TIMEOUT_MS. Trả về AiReply kèm model ĐÃ dùng thành công;
+ * tất cả fail → ném lỗi của lần thử CUỐI (giữ hành vi caller hiện tại). */
+async function postOpenRouterChain(
+  base: Record<string, unknown>,
+  chain: string[],
+  retryNoJson = false,
+  stripFences = false,
+): Promise<AiReply> {
+  let lastError: unknown
+  for (let i = 0; i < chain.length; i++) {
+    try {
+      const reply = await postOpenRouter({ ...base, model: chain[i] }, retryNoJson, stripFences)
+      // Model reasoning/free thi thoảng trả content RỖNG (nuốt hết token vào suy luận)
+      // → coi như lỗi và thử model kế trong chuỗi.
+      if (!reply.content?.trim()) {
+        lastError = new Error(`OPENROUTER_EMPTY — ${chain[i]} trả phản hồi rỗng`)
+        console.warn(`[ai] model ${chain[i]} trả rỗng → thử model kế`)
+        continue
+      }
+      return reply
+    } catch (e) {
+      lastError = e
+      const next = chain[i + 1]
+      if (!next || !isRetryableModelError(e)) throw e
+      console.warn(`[ai] model ${chain[i]} lỗi ${briefError(e)} → thử ${next}`)
+    }
+  }
+  throw lastError instanceof Error
+    ? lastError
+    : new Error('OPENROUTER_FAILED — mọi model trong chuỗi dự phòng đều lỗi')
+}
+
 export async function chatCompletion(req: AiRequest): Promise<AiReply> {
   const body: Record<string, unknown> = {
-    model: resolveModel(req.model),
     messages: req.messages,
     temperature: req.temperature ?? 0.6,
   }
   if (req.json) body.response_format = { type: 'json_object' }
   if (req.maxTokens) body.max_tokens = req.maxTokens
-  return postOpenRouter(body, Boolean(req.json), Boolean(req.json))
+  return postOpenRouterChain(body, modelChain(resolveModel(req.model)), Boolean(req.json), Boolean(req.json))
 }
 
-/** Gửi ảnh (data URL) kèm text cho model vision — AI nhìn PIXEL ảnh, không chỉ tên file. */
+/** Gửi ảnh (data URL) kèm text cho model vision — AI nhìn PIXEL ảnh, không chỉ tên file.
+ * Cùng hưởng chuỗi dự phòng: model vision 429 → thử model kế (đều đọc được ảnh). */
 export async function visionCompletion(req: AiVisionRequest): Promise<AiReply> {
   const body: Record<string, unknown> = {
-    model: resolveVisionModel(req.model),
     messages: req.messages.map((m) => ({ role: m.role, content: buildMultimodalContent(m) })),
     temperature: req.temperature ?? 0.3,
   }
   if (req.json) body.response_format = { type: 'json_object' }
   if (req.maxTokens) body.max_tokens = req.maxTokens
-  return postOpenRouter(body, Boolean(req.json), Boolean(req.json))
+  return postOpenRouterChain(body, modelChain(resolveVisionModel(req.model)), Boolean(req.json), Boolean(req.json))
 }

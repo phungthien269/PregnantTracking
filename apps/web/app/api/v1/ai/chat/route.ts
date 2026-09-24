@@ -2,11 +2,12 @@ import { z } from 'zod'
 import { KNOWLEDGE_STAGES } from '@mevabe/domain'
 import { apiOk, parseBody } from '@/lib/api-utils'
 import { chatCompletion, aiConfigured, AI_MODELS, providerOf } from '@/lib/ai/client'
-import { chatSystemPrompt, buildChatContext, type MedicalVisitContext } from '@/lib/ai/prompts'
+import { chatSystemPrompt, buildChatContext, type ChatPregnancyInfo, type MedicalVisitContext } from '@/lib/ai/prompts'
 import { sourceReply } from '@/lib/ai/sources'
 import { chatStore } from '@/lib/ai/chat-store'
 import { data } from '@/lib/data'
-import { CONDITION_LABELS } from '@/lib/labels'
+import { CONDITION_LABELS, TRIMESTER_LABELS } from '@/lib/labels'
+import { todayStr } from '@/lib/format'
 
 const stageSchema = z.enum(KNOWLEDGE_STAGES)
 const bodySchema = z.object({
@@ -99,13 +100,26 @@ export async function POST(req: Request): Promise<Response> {
         })
       : undefined
 
+    // "HÔM NAY mẹ đang ở tuần mấy" cho system prompt — dùng đúng dashboard đã lấy (KHÔNG thêm query):
+    // week/trimester/dueDate/daysLeft từ dash; trimester map nhãn tiếng Việt; cân nặng/huyết áp
+    // gần nhất đã nằm trong dash.latestMeasurements (buildChatContext đưa vào context).
+    const pregnancy: ChatPregnancyInfo | undefined = dash
+      ? {
+          today: todayStr(),
+          week: dash.week,
+          trimester: TRIMESTER_LABELS[dash.trimester],
+          dueDate: dash.dueDate,
+          daysLeft: dash.daysLeft,
+        }
+      : undefined
+
     // Nhớ hội thoại: lịch sử session (user/assistant, tối đa 10 tin) chèn giữa system và câu hỏi mới.
     const history = session ? await chatStore.getAiHistory(session.sessionId, 10).catch(() => []) : []
 
     try {
       const replyData = await chatCompletion({
         messages: [
-          { role: 'system', content: chatSystemPrompt(stage, context) },
+          { role: 'system', content: chatSystemPrompt(stage, context, pregnancy) },
           ...history,
           { role: 'user', content: message },
         ],

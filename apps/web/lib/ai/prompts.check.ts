@@ -45,7 +45,7 @@ const ctx = buildChatContext({
   upcomingAppointments: [{ type: 'ultrasound', scheduled_at: '2026-08-10T08:30:00+07:00' }],
 })
 
-assert(ctx.includes('Tuần thai: 20'), 'week')
+assert(ctx.includes('Tuần thai hiện tại: 20'), 'week')
 assert(ctx.includes('62.5 kg'), 'weight')
 assert(ctx.includes('110 mmHg'), 'bp')
 assert(ctx.includes('Đau lưng nhẹ (mild)'), 'symptom')

@@ -10,12 +10,39 @@ Trả lời bằng tiếng Việt, ngắn gọn, ấm áp và có trách nhiệm
 KHÔNG hỏi hoặc nhắc đến thông tin định danh (tên, số điện thoại, email, địa chỉ).
 Luôn ghi rõ đây là thông tin tham khảo, không thay thế bác sĩ. Với dấu hiệu nguy hiểm, khuyến khích gọi cấp cứu 115 hoặc đến cơ sở y tế.`
 
-export function chatSystemPrompt(stage?: string | null, context?: string): string {
+/** Thông tin "HÔM NAY mẹ đang ở tuần mấy" cho system prompt. Route tính từ dashboard
+ * (trimester đã map nhãn tiếng Việt ở route để prompts.ts khỏi phụ thuộc runtime lib/labels). */
+export interface ChatPregnancyInfo {
+  /** Ngày hôm nay dạng YYYY-MM-DD. */
+  today: string
+  week: number
+  /** Nhãn tiếng Việt (VD "Tam cá nguyệt thứ hai") — route đã map qua TRIMESTER_LABELS. */
+  trimester: string
+  /** Ngày dự sinh YYYY-MM-DD. */
+  dueDate: string
+  daysLeft: number
+}
+
+export function chatSystemPrompt(
+  stage?: string | null,
+  context?: string,
+  pregnancy?: ChatPregnancyInfo | null,
+): string {
   const stageLine = stage ? `Mẹ đang ở giai đoạn: ${stage}. ` : ''
+  const pregBlock = pregnancy
+    ? `HÔM NAY là ${pregnancy.today}. Mẹ đang ở TUẦN ${pregnancy.week} (${pregnancy.trimester}, dự sinh ${pregnancy.dueDate}, còn ${pregnancy.daysLeft} ngày).
+
+QUY TẮC TRẢ LỜI BẮT BUỘC:
+1. Trả lời ĐÚNG TRỌNG TÂM câu hỏi của mẹ — không lan man, không trả lệch chủ đề.
+2. Khi mẹ hỏi về "thời điểm hiện tại", "bây giờ", "tuần này", "giai đoạn này"... → hiểu là TUẦN THAI HIỆN TẠI nêu trên và trả lời theo đúng tuần đó (ví dụ: khoáng chất/vitamin nên ưu tiên của tuần thai hiện tại).
+3. Dùng DỮ LIỆU CÁ NHÂN của mẹ bên dưới (tuần thai, triệu chứng, tình trạng, chỉ số đo, lịch khám) để trả lời sát thực tế.
+4. KHÔNG bịa số liệu không có trong ngữ cảnh cá nhân — thiếu dữ liệu thì trả lời bằng kiến thức chung và nói rõ cho mẹ.
+`
+    : ''
   const ctxLine = context
     ? `\n\nDưới đây là THÔNG TIN CÁ NHÂN của mẹ (dùng để trả lời sát thực tế — tuần thai, triệu chứng, đo lường... KHÔNG nhắc lại thông tin định danh):\n${context}`
     : ''
-  return `${BASE}\n\n${stageLine}Trả lời dựa trên kiến thức chung và cẩm nang thai kỳ; không bịa nguồn.${ctxLine}`
+  return `${BASE}\n\n${stageLine}${pregBlock}Trả lời dựa trên kiến thức chung và cẩm nang thai kỳ; không bịa nguồn.${ctxLine}`
 }
 
 /** Đầu vào cho buildChatContext — tương thích cấu trúc với DashboardSummary. */
@@ -68,7 +95,10 @@ function scrubPii(s: string): string {
 
 /** Dựng chuỗi ngữ cảnh cá nhân từ dữ liệu dashboard — để AI trả lời SÁT user, không chung chung. */
 export function buildChatContext(c: ChatContextInput, opts?: ChatContextOptions): string {
-  const lines = [`Tuần thai: ${c.week} — ${c.trimester}.`, `Ngày dự sinh: ${c.dueDate} (còn ${c.daysLeft} ngày).`]
+  const lines = [
+    `Tuần thai hiện tại: ${c.week} — ${c.trimester}.`,
+    `Ngày dự sinh: ${c.dueDate} (còn ${c.daysLeft} ngày).`,
+  ]
   const w = [...c.latestMeasurements].reverse().find((m) => m.type === 'weight')
   if (w) lines.push(`Cân nặng gần nhất: ${w.value} ${w.unit}.`)
   const bp = [...c.latestMeasurements].reverse().find((m) => m.type === 'blood_pressure')
